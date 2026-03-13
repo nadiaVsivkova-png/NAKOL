@@ -1,7 +1,9 @@
 # 🎓 NAKOL
 
 NAKOL (Notification And Knowledge Organizer for Learning) — Telegram-бот, который превращает скучное отслеживание домашки и расписания в игру с мемами. Никаких скучных списков — только дедлайны, напоминания и награда за выполнение.
-Логотип:![IMG_2831](https://github.com/user-attachments/assets/acb1fc01-f94a-401c-8282-eef79bd4748e)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/acb1fc01-f94a-401c-8282-eef79bd4748e" alt="NAKOL Logo" width="300"/>
+</p>
 
 ---
 

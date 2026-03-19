@@ -78,4 +78,19 @@ NAKOL даёт старостам удобные инструменты импо
 
 ## 📸 Скриншоты
 
-*Здесь скоро будут скриншоты бота: регистрация, импорт заданий, список дел и, конечно, мемы.*  
+ ## Скриншоты
+
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/7b113e6c-312c-42cd-8c00-f33cbaaea507" width="300"></td>
+    <td><img src="https://github.com/user-attachments/assets/b8ddcdbb-b904-471c-bec2-919847a639b2" width="300"></td>
+  </tr>
+</table>
+
+
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/c34953ca-3833-4c7a-a36b-a808224a7753" width="300"></td>
+    <td><img src="https://github.com/user-attachments/assets/6062c90c-7fd7-4d85-a012-1c4eff7957ca" width="300"></td>
+  </tr>
+</table>

@@ -1,16 +1,16 @@
 import asyncio
+import os
 from aiogram import Bot, Dispatcher
-from aiogram.filters import Command
-from aiogram.types import Message
+from dotenv import load_dotenv
+from handlers.start import router as start_router
 
-BOT_TOKEN = "8798840591:AAG-tpdOTgUkGQKwgXGNvUplOjWQ-Pgh2g0"
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-
-@dp.message(Command("start"))
-async def cmd_start(message: Message):
-    await message.answer("Sup! Ты попал NAKOL💫")
+dp.include_router(start_router)
 
 async def main():
     await dp.start_polling(bot)

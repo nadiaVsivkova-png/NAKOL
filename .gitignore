@@ -1,0 +1,4 @@
+# секреты не коммитим
+.env
+.env.local
+.env.production

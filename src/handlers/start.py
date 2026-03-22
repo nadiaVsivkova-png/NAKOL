@@ -20,7 +20,3 @@ async def role_starosta(message: Message):
 @router.message(lambda m: m.text == "Я в группе")
 async def role_member(message: Message):
     await message.answer("Ты участник группы! Введи код группы 🔑")
-
-@router.message(lambda m: m.text == "Я сам за себя")
-async def role_individual(message: Message):
-    await message.answer("Индивидуальный режим! Работаешь самостоятельно 💪")

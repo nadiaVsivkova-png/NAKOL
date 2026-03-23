@@ -1,7 +1,13 @@
 import asyncio
+import os
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, FSInputFile
 from aiogram.filters import Command
+
+download_keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="📥 Скачать шаблон")]],
+                                        resize_keyboard=True,
+                                        one_time_keyboard=True
+                                        )
 
 Keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="📊Загрузить Excel-файл(рекомендую)")],
                                          [KeyboardButton(text="📸Отправить фото(распознаю текст)")],
@@ -24,8 +30,26 @@ async def answer(message: Message):
 async def handle_excel(message: Message):
     await message.answer("Ты выбрал Excel-файл.Скачай шаблон и заполни его: /template\n\n"
                          "После заполнения просто загрузи файл сюда.",
-                         reply_markup=ReplyKeyboardRemove()  # Убираем клавиатуру
+                         reply_markup=ReplyKeyboardRemove()
                          )
+
+
+@dp.message(Command("template"))
+async def answer_download(message: Message):
+    template_path = "schedule_template.xlsx"
+
+    if os.path.exists(template_path):
+        # Отправляем файл
+        file = FSInputFile(template_path)
+        await message.answer_document(
+            document=file,
+            caption="📋 Шаблон расписания\n\n"
+                    "Заполните файл и отправьте его обратно."
+        )
+    else:
+        await message.answer(
+            "❌ Шаблон не найден."
+        )
 
 
 @dp.message(F.text == "📸Отправить фото(распознаю текст)")

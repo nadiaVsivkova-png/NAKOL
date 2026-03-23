@@ -1,6 +1,6 @@
 # секреты не коммитим
 __pycache__/
-*.pyc 
+*.pyc
 nakol.db
 .env
 .env.local

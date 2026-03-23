@@ -13,10 +13,6 @@ async def cmd_start(message: Message):
     ], resize_keyboard=True)
     await message.answer("Sup! Ты попал NAKOL💫 Кто ты?", reply_markup=kb)
 
-@router.message(lambda m: m.text == "Я староста")
-async def role_starosta(message: Message):
-    await message.answer("Ты староста! Скоро сможешь создать группу 🎓")
-
 @router.message(lambda m: m.text == "Я в группе")
 async def role_member(message: Message):
     await message.answer("Ты участник группы! Введи код группы 🔑")

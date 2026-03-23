@@ -1,4 +1,7 @@
 # секреты не коммитим
+__pycache__/
+*.pyc 
+nakol.db
 .env
 .env.local
 .env.production

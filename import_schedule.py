@@ -4,13 +4,13 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKey
 from aiogram.filters import Command
 
 Keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="📊Загрузить Excel-файл(рекомендую)")],
-                                          [KeyboardButton(text="📸Отправить фото(распознаю текст)")],
-                                          [KeyboardButton(text="✍️Ввести вручную")]],
+                                         [KeyboardButton(text="📸Отправить фото(распознаю текст)")],
+                                         [KeyboardButton(text="✍️Ввести вручную")]],
                                resize_keyboard=True,
                                one_time_keyboard=True
                                )
 
-bot = Bot(token="НАШ ТОКЕН Я НЕ ЗНАЮ")
+bot = Bot(token="Я НЕ ЗНАЮ НАШ ТОКЕН")
 dp = Dispatcher()
 
 
@@ -22,8 +22,9 @@ async def answer(message: Message):
 
 @dp.message(F.text == "📊Загрузить Excel-файл(рекомендую)")
 async def handle_excel(message: Message):
-    await message.answer("Ты выбрал Excel-файл. Жду твоего расписания!",
-                         reply_markup=ReplyKeyboardRemove()
+    await message.answer("Ты выбрал Excel-файл.Скачай шаблон и заполни его: /template\n\n"
+                         "После заполнения просто загрузи файл сюда.",
+                         reply_markup=ReplyKeyboardRemove()  # Убираем клавиатуру
                          )
 
 

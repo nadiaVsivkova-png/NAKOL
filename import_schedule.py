@@ -30,14 +30,18 @@ async def handle_excel(message: Message):
 
 @dp.message(F.text == "📸Отправить фото(распознаю текст)")
 async def handle_excel(message: Message):
-    await message.answer("Ты выбрал отправить фото. Жду твоего расписания!",
+    await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.",
                          reply_markup=ReplyKeyboardRemove()
                          )
 
 
 @dp.message(F.text == "✍️Ввести вручную")
 async def handle_excel(message: Message):
-    await message.answer("Ты выбрал ввести вручную. Жду твоего расписания!",
+    await message.answer("Давай добавим занятия по одному.\n\n"
+                         "Введи первое занятие в формате:\n"
+                         "День, Время начала, Время конца, Предмет\n"
+                         "Например: пн, 10:00, 11:30, Математика\n\n"
+                         "Или отправь /done когда закончишь",
                          reply_markup=ReplyKeyboardRemove()
                          )
 

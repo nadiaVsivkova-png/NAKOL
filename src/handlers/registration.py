@@ -25,5 +25,6 @@ async def starosta_handler(message: Message):
             f"Код твоей группы: {group_code}\n\n"
             f"Поделись этим кодом с участниками группы."
         )
+        await message.answer("Чтобы получить список всех команд, введи /commands")
     else:
         await message.answer("❌ Ошибка при создании группы. Попробуй снова.")

@@ -32,6 +32,7 @@ async def process_group_code(message: Message, state: FSMContext):
     )
     if result:
         await message.answer("✅ Ты вступила в группу! Добро пожаловать 🎉")
+        await message.answer("Чтобы получить список всех команд, введи /commands")
     else:
         await message.answer("❌ Группа с таким кодом не найдена. Проверь код и попробуй снова.")
     await state.clear()

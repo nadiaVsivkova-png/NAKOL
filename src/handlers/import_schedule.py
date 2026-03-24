@@ -2,6 +2,7 @@ import os
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, FSInputFile
 from aiogram.filters import Command
+from parsers.excel_parser import parse_excel_schedule
 
 router = Router()
 
@@ -54,3 +55,41 @@ async def handle_manual_schedule(message: Message):
                          "Например: пн, 10:00, 11:30, Математика\n\n"
                          "Или отправь /done когда закончишь",
                          reply_markup=ReplyKeyboardRemove())
+
+
+@router.message(F.document)
+async def handle_document(message: Message):
+    if not message.document.file_name.endswith('.xlsx'):
+        await message.answer("❌ Пожалуйста, отправьте файл в формате .xlsx")
+        return
+
+    file_info = await message.bot.get_file(message.document.file_id)
+    downloaded_file = await message.bot.download_file(file_info.file_path)
+
+    temp_path = f"temp_{message.document.file_name}"
+    with open(temp_path, "wb") as f:
+        f.write(downloaded_file.getvalue())
+
+    await message.answer("📥 Файл получен. Обрабатываю...")
+
+    lessons = parse_excel_schedule(temp_path)
+
+    if lessons:
+        response = "✅ Расписание загружено!\n\n"
+        current_day = ""
+
+        for lesson in lessons:
+            if lesson['day'] != current_day:
+                current_day = lesson['day']
+                response += f"\n {current_day.upper()}:\n"
+            response += f"   ⏰ {lesson['start_time']}-{lesson['end_time']} - {lesson['subject']}\n"
+
+        await message.answer(response)
+
+    else:
+        await message.answer(
+            "❌ Не удалось распознать файл.\n\n"
+            "Убедитесь, что файл соответствует шаблону:\n"
+            "Для расписания: День, Время начала, Время конца, Предмет\n"
+            "Для домашки: Предмет, Название, Дедлайн"
+        )

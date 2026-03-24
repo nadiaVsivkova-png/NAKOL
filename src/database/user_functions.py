@@ -10,7 +10,7 @@ def create_user(telegram_id: int, username: str, role: str, group_id=None):
         # Проверяем, есть ли уже такой пользователь
         existing_user = db.query(User).filter(User.telegram_id == telegram_id).first()
         if existing_user:
-            print(f"⚠️ Пользователь с telegram_id {telegram_id} уже существует")
+            print(f"Пользователь с telegram_id {telegram_id} уже существует")
             return existing_user
         
         # Создаем пользователя
@@ -108,7 +108,7 @@ def get_users_by_role(role: str):
     db = get_db()
     try:
         users = db.query(User).filter(User.role == role).all()
-        print(f"📊 Пользователей с ролью '{role}': {len(users)}")
+        print(f" Пользователей с ролью '{role}': {len(users)}")
         return users
     finally:
         db.close()
@@ -154,16 +154,8 @@ if __name__ == "__main__":
     )
     
     if user:
-        # Получаем пользователя
         found_user = get_user(123456789)
-        
-        # Обновляем роль
         update_user_role(123456789, "group_member")
-        
-        # Получаем всех пользователей
         all_users = get_all_users()
-        
-        # Удаляем тестового пользователя (если нужно)
-        # delete_user(123456789)
     
     print("\n Тестирование завершено!")

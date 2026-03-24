@@ -1,0 +1,221 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.1 Chrome/142.0.7444.265 Electron/39.8.0 Safari/537.36" version="29.6.1">
+  <diagram name="Страница-1" id="pZxJLlT65fxIa08IiXJM">
+    <mxGraphModel dx="1708" dy="963" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="AmTRiZMQQaIfcqkiC90V-1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="Староста&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="150" width="80" x="1420" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="AmTRiZMQQaIfcqkiC90V-2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="Индивидуал" vertex="1">
+          <mxGeometry height="150" width="80" x="100" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-5" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;" value="Участник" vertex="1">
+          <mxGeometry height="150" width="80" x="1420" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-8" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="&lt;span style=&quot;color: rgb(240, 246, 252); font-family: &amp;quot;Monaspace Neon&amp;quot;, ui-monospace, SFMono-Regular, &amp;quot;SF Mono&amp;quot;, Menlo, Consolas, &amp;quot;Liberation Mono&amp;quot;, monospace; font-size: 13.6px; text-align: start; white-space-collapse: break-spaces; background-color: rgba(101, 108, 118, 0.2);&quot;&gt;/import_schedule - импорт расписания&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="180" x="300" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-9" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="&lt;span style=&quot;color: rgb(240, 246, 252); font-family: &amp;quot;Monaspace Neon&amp;quot;, ui-monospace, SFMono-Regular, &amp;quot;SF Mono&amp;quot;, Menlo, Consolas, &amp;quot;Liberation Mono&amp;quot;, monospace; font-size: 13.6px; text-align: start; white-space-collapse: break-spaces; background-color: rgba(101, 108, 118, 0.2);&quot;&gt;/template - запрос Excel шаблона для импорта расписания&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="180" x="430" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-10" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="&lt;span style=&quot;color: rgb(240, 246, 252); font-family: &amp;quot;Monaspace Neon&amp;quot;, ui-monospace, SFMono-Regular, &amp;quot;SF Mono&amp;quot;, Menlo, Consolas, &amp;quot;Liberation Mono&amp;quot;, monospace; font-size: 13.6px; text-align: start; white-space-collapse: break-spaces; background-color: rgba(101, 108, 118, 0.2);&quot;&gt;/confirm_schedule - подтверждение и загрузка расписания&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="180" x="580" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-12" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="&lt;span style=&quot;color: rgb(240, 246, 252); font-family: &amp;quot;Monaspace Neon&amp;quot;, ui-monospace, SFMono-Regular, &amp;quot;SF Mono&amp;quot;, Menlo, Consolas, &amp;quot;Liberation Mono&amp;quot;, monospace; font-size: 13.6px; text-align: start; white-space-collapse: break-spaces; background-color: rgba(101, 108, 118, 0.2);&quot;&gt;/edit_schedule - изменение расписания&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="180" x="710" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-14" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="&lt;span style=&quot;color: rgb(240, 246, 252); font-family: &amp;quot;Monaspace Neon&amp;quot;, ui-monospace, SFMono-Regular, &amp;quot;SF Mono&amp;quot;, Menlo, Consolas, &amp;quot;Liberation Mono&amp;quot;, monospace; font-size: 13.6px; text-align: start; white-space-collapse: break-spaces; background-color: rgba(101, 108, 118, 0.2);&quot;&gt;/add_dates - добавить даты вручную &lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="180" x="1010" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-15" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="&lt;span style=&quot;color: rgb(240, 246, 252); font-family: &amp;quot;Monaspace Neon&amp;quot;, ui-monospace, SFMono-Regular, &amp;quot;SF Mono&amp;quot;, Menlo, Consolas, &amp;quot;Liberation Mono&amp;quot;, monospace; font-size: 13.6px; text-align: start; white-space-collapse: break-spaces; background-color: rgba(101, 108, 118, 0.2);&quot;&gt;/send_to_group - отправить группе задания&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="180" x="1230" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-16" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="/done [id] - отметить выполненное задание" vertex="1">
+          <mxGeometry height="80" width="180" x="710" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-21" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="/list - показать мои задания" vertex="1">
+          <mxGeometry height="80" width="180" x="870" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-20" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="/remind_on - включить напоминания" vertex="1">
+          <mxGeometry height="80" width="180" x="430" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-22" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="/remind_off - отключить настройки напоминаний " vertex="1">
+          <mxGeometry height="80" width="180" x="580" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-23" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=1;resizable=1;rotatable=1;deletable=1;editable=1;locked=0;connectable=1;" value="/remind - изменить настройки напоминаний " vertex="1">
+          <mxGeometry height="80" width="180" x="300" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-25" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="&lt;span style=&quot;color: rgb(240, 246, 252); font-family: &amp;quot;Monaspace Neon&amp;quot;, ui-monospace, SFMono-Regular, &amp;quot;SF Mono&amp;quot;, Menlo, Consolas, &amp;quot;Liberation Mono&amp;quot;, monospace; font-size: 13.6px; text-align: start; white-space-collapse: break-spaces; background-color: rgba(101, 108, 118, 0.2);&quot;&gt;/done - отправить изменения в систему&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="180" x="870" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-64" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="390" y="520" as="sourcePoint" />
+            <mxPoint x="1100" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-72" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="390" y="730" as="sourcePoint" />
+            <mxPoint x="1120" y="730" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-88" parent="1" style="ellipse;whiteSpace=wrap;html=1;movable=0;resizable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="/commands - вывести список всех команд" vertex="1">
+          <mxGeometry height="80" width="180" x="1030" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-105" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="1040" />
+            </Array>
+            <mxPoint x="800" y="980" as="sourcePoint" />
+            <mxPoint x="1400" y="1040" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-107" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="799.96" y="520" as="sourcePoint" />
+            <mxPoint x="800" y="730" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-109" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="980" />
+              <mxPoint x="1120" y="980" />
+            </Array>
+            <mxPoint x="390" y="980" as="sourcePoint" />
+            <mxPoint x="1120" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-113" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-21" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="960" y="980" as="sourcePoint" />
+            <mxPoint x="850" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-114" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-23" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="390" y="980" as="sourcePoint" />
+            <mxPoint x="830" y="830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-115" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-16" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="800" y="980" as="sourcePoint" />
+            <mxPoint x="830" y="830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-116" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-22" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="670" y="980" as="sourcePoint" />
+            <mxPoint x="830" y="830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-118" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-88" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1120" y="980" as="sourcePoint" />
+            <mxPoint x="920" y="820" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-119" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-88" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1120" y="730" as="sourcePoint" />
+            <mxPoint x="920" y="820" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-120" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-23" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="390" y="730" as="sourcePoint" />
+            <mxPoint x="920" y="820" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-121" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="669.55" y="730" as="sourcePoint" />
+            <mxPoint x="669.55" y="770" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-122" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="959.55" y="730" as="sourcePoint" />
+            <mxPoint x="959.55" y="770" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-123" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="799.6" y="730" as="sourcePoint" />
+            <mxPoint x="799.6" y="870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-124" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="519.6" y="730" as="sourcePoint" />
+            <mxPoint x="519.6" y="870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-125" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-8" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="390" y="520" as="sourcePoint" />
+            <mxPoint x="820" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-126" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="669.58" y="520" as="sourcePoint" />
+            <mxPoint x="669.58" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-127" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="959.58" y="520" as="sourcePoint" />
+            <mxPoint x="959.58" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-128" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-9" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="520" y="520" as="sourcePoint" />
+            <mxPoint x="770" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-130" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1099.58" y="520" as="sourcePoint" />
+            <mxPoint x="1099.58" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-131" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="799.58" y="520" as="sourcePoint" />
+            <mxPoint x="799.58" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-132" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" target="esbvAxRJSCj8qsRnZAV7-15" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1320" y="620" as="sourcePoint" />
+            <mxPoint x="1320" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-133" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;movable=0;rotatable=0;deletable=0;editable=0;locked=1;connectable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="519.76" y="980" as="sourcePoint" />
+            <mxPoint x="519.76" y="950" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-134" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="180" y="620" as="sourcePoint" />
+            <mxPoint x="800" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="esbvAxRJSCj8qsRnZAV7-135" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;resizable=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1410" y="620" as="sourcePoint" />
+            <mxPoint x="800" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

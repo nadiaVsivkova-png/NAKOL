@@ -10,16 +10,6 @@ def generate_group_code(length=6):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 def create_group(group_name: str, starosta_id: int):
-    """
-    Создает новую группу
-    
-    Параметры:
-        group_name: название группы (например "ИС-21")
-        starosta_id: telegram_id старосты
-    
-    Возвращает:
-        код группы для приглашения
-    """
     db = get_db()
     try:
         # Генерируем уникальный код группы
@@ -66,15 +56,6 @@ def create_group(group_name: str, starosta_id: int):
         return None
 
 def get_group_by_code(group_code: str):
-    """
-    Находит группу по коду приглашения
-    
-    Параметры:
-        group_code: код группы
-    
-    Возвращает:
-        группу или None
-    """
     db = get_db()
     try:
         group = db.query(Group).filter(Group.group_code == group_code).first()
@@ -90,15 +71,6 @@ def get_group_by_code(group_code: str):
         return None
 
 def get_group_by_id(group_id: int):
-    """
-    Находит группу по ID
-    
-    Параметры:
-        group_id: ID группы в БД
-    
-    Возвращает:
-        группу или None
-    """
     db = get_db()
     try:
         group = db.query(Group).filter(Group.id == group_id).first()
@@ -110,16 +82,6 @@ def get_group_by_id(group_id: int):
         return None
 
 def add_user_to_group(user_id: int, group_id: int):
-    """
-    Добавляет пользователя в группу
-    
-    Параметры:
-        user_id: ID пользователя в БД
-        group_id: ID группы в БД
-    
-    Возвращает:
-        True если успешно, False если нет
-    """
     db = get_db()
     try:
         # Проверяем, не состоит ли уже пользователь в группе
@@ -146,7 +108,6 @@ def add_user_to_group(user_id: int, group_id: int):
             if user.role == "individual":
                 user.role = "group_member"
             user.group_id = group_id
-        
         db.commit()
         print(f" Пользователь добавлен в группу")
         db.close()
@@ -159,16 +120,6 @@ def add_user_to_group(user_id: int, group_id: int):
         return False
 
 def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
-    """
-    Добавляет пользователя в группу по коду
-    
-    Параметры:
-        telegram_id: telegram_id пользователя
-        group_code: код группы
-    
-    Возвращает:
-        True если успешно, False если нет
-    """
     db = get_db()
     try:
         # Находим пользователя
@@ -195,15 +146,6 @@ def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
         return False
 
 def get_group_members(group_id: int):
-    """
-    Получает список всех участников группы
-    
-    Параметры:
-        group_id: ID группы
-    
-    Возвращает:
-        список пользователей
-    """
     db = get_db()
     try:
         members = db.query(User).join(GroupMember).filter(GroupMember.group_id == group_id).all()
@@ -236,16 +178,7 @@ def get_user_groups(user_id: int):
         return []
 
 def is_user_in_group(user_id: int, group_id: int):
-    """
-    Проверяет, состоит ли пользователь в группе
     
-    Параметры:
-        user_id: ID пользователя
-        group_id: ID группы
-    
-    Возвращает:
-        True или False
-    """
     db = get_db()
     try:
         member = db.query(GroupMember).filter(
@@ -259,84 +192,85 @@ def is_user_in_group(user_id: int, group_id: int):
         db.close()
         return False
 
-# Тестирование
+# Тестирование 
 if __name__ == "__main__":
     print("=" * 40)
     print("ТЕСТИРОВАНИЕ ФУНКЦИЙ ГРУПП")
     print("=" * 40)
-    
-    # Создаем тестового пользователя (старосту)
+
     from user_functions import create_user, get_user, get_all_users
-    
+
+    # 1. СОЗДАНИЕ СТАРОСТЫ 
     print("\n1. СОЗДАНИЕ СТАРОСТЫ...")
     starosta = create_user(
         telegram_id=999888777,
         username="староста_тест",
         role="individual"
     )
-    
+
     if starosta:
-        print(f"Староста создан: {starosta.username}")
-        
-        # Сохраняем ID старосты
-        starosta_id = starosta.telegram_id
-        
-        # Создаем группу
+        #СОХРАНЯЕМ ДАННЫЕ 
+        starosta_username = starosta.username
+        starosta_tg_id = starosta.telegram_id
+        starosta_id = starosta.id
+        print(f"   Староста создан: {starosta_username} (ID: {starosta_id})")
+
+        #2. СОЗДАНИЕ ГРУППЫ 
         print("\n2. СОЗДАНИЕ ГРУППЫ...")
         group_code = create_group(
             group_name="ТЕСТ-01",
-            starosta_id=starosta_id
+            starosta_id=starosta_tg_id
         )
-        
+
         if group_code:
-            print(f"Группа создана! Код: {group_code}")
-            
-            # Находим группу по коду
+            print(f"    Группа создана! Код: {group_code}")
+
+            #3. ПОИСК ГРУППЫ ПО КОДУ 
             group = get_group_by_code(group_code)
-            
+
             if group:
-                print(f"Группа найдена: {group.group_name}")
-                
-                # Сохраняем ID группы
+                # СОХРАНЯЕМ ID ГРУППЫ
                 group_id = group.id
-                
-                # Создаем еще одного пользователя (участника)
+                group_name = group.group_name
+                print(f"    Группа найдена: {group_name} (ID: {group_id})")
+
+                # --- 4. СОЗДАНИЕ УЧАСТНИКА ---
                 print("\n3. СОЗДАНИЕ УЧАСТНИКА...")
                 member = create_user(
                     telegram_id=111222333,
                     username="участник_тест",
                     role="individual"
                 )
-                
+
                 if member:
-                    print(f"Участник создан: {member.username}")
-                    
-                    # Сохраняем ID участника
+                    # СОХРАНЯЕМ ДАННЫЕ УЧАСТНИКА 
+                    member_username = member.username
                     member_id = member.id
-                    
-                    # Добавляем пользователя в группу (используем ID)
+                    print(f"    Участник создан: {member_username} (ID: {member_id})")
+
+                    # 5. ДОБАВЛЕНИЕ В ГРУППУ 
                     print("\n4. ДОБАВЛЕНИЕ В ГРУППУ...")
                     add_result = add_user_to_group(member_id, group_id)
-                    
+
                     if add_result:
-                        print(f"Пользователь добавлен в группу")
-                        
-                        # Проверяем, обновилась ли роль
+                        print(f"   Пользователь добавлен в группу")
+
+                        # Проверяем, обновилась ли роль 
                         updated_member = get_user(111222333)
                         if updated_member:
                             print(f"      Новая роль: {updated_member.role}")
-                        
-                        # Получаем всех участников группы
+
+                        # 6. ПОЛУЧАЕМ ВСЕХ УЧАСТНИКОВ ГРУППЫ 
                         print("\n5. УЧАСТНИКИ ГРУППЫ:")
-                        members = get_group_members(group_id)
-                        for i, m in enumerate(members, 1):
+                        members_list = get_group_members(group_id)
+                        for i, m in enumerate(members_list, 1):
                             print(f"   {i}. {m.username} (роль: {m.role})")
-                        
-                        # Проверяем членство
+
+                        #  7. ПРОВЕРКА ЧЛЕНСТВА 
                         from group_functions import is_user_in_group
                         in_group = is_user_in_group(member_id, group_id)
                         print(f"\n6. ПРОВЕРКА ЧЛЕНСТВА: {in_group}")
-    
+
     print("\n" + "=" * 40)
     print("ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
     print("=" * 40)

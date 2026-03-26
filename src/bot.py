@@ -7,6 +7,7 @@ from handlers.tasks import router as tasks_router
 from handlers.registration import router as registration_router
 from handlers.join_group import router as join_group_router
 from handlers.individual import router as individual_router
+from routers import schedule, homework
 
 load_dotenv()
 
@@ -19,6 +20,8 @@ dp.include_router(tasks_router)
 dp.include_router(registration_router)
 dp.include_router(join_group_router)
 dp.include_router(individual_router)
+dp.include_router(schedule.router)
+dp.include_router(homework.router)
 
 async def main():
     await dp.start_polling(bot)

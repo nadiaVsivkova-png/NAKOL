@@ -5,3 +5,10 @@ nakol.db
 .env
 .env.local
 .env.production
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+venv/
+*.pyo
+*.pyd

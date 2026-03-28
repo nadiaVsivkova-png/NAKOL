@@ -49,6 +49,7 @@ NAKOL даёт старостам удобные инструменты импо
 | `/list` | Показать мои задания с сортировкой по срочности |
 | `/done [ID]` | Отметить задание выполненным и получить мем |
 | `/remind` | Настроить напоминания (время, тип) |
+| `/commands` | Список всех команд |
 
 ---
 
@@ -71,14 +72,13 @@ NAKOL даёт старостам удобные инструменты импо
 | **Надя** | Product Leader + Designer | [@nadiaVsivkova-png](https://github.com/nadiaVsivkova-png) |
 | **Оля** | Business Analyst | [@olgaevge](https://github.com/olgaevge) |
 | **Лера** | Developer | [@gurrovva](https://github.com/gurrovva) |
-| **Катя** | Developer | [@kirakosjana2025-prog](https://github.com/kirakosjana2025-prog) |
+| **Катя** | Developer | [@kiraskinaSWAGA](https://github.com/kiraskinaSWAGA) |
 | **Алиса** | Developer | [@alxsks](https://github.com/alxsks) |
 
 ---
 
 ## 📸 Скриншоты
 
- ## Скриншоты
 
 <table>
   <tr>

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -46,6 +46,7 @@ class Task(Base):
     deadline = Column(DateTime, nullable=False)
     group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
     created_by = Column(Integer, nullable=False)  # telegram_id
+    photo_file_id = Column(String, nullable=True)
 
 class UserTask(Base):
     __tablename__ = 'user_tasks'
@@ -64,6 +65,7 @@ class ReminderSetting(Base):
     mode = Column(String, nullable=False)  # auto / custom / off
     reminder_24h_time = Column(String, nullable=True)  # например "20:00"
     reminder_3h_enabled = Column(Boolean, default=True)
+    custom_times = Column(JSON, nullable=True)  # например ["10:00", "18:00"]
 
 class Meme(Base):
     __tablename__ = 'memes'
@@ -71,3 +73,25 @@ class Meme(Base):
     id = Column(Integer, primary_key=True)
     type = Column(String, nullable=False)  # photo / text
     content = Column(String, nullable=False)
+    
+class SessionSchedule(Base):
+    __tablename__ = 'session_schedules'
+
+    id = Column(Integer, primary_key=True)
+    group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    subject_id = Column(Integer, ForeignKey('subjects.id'), nullable=False)
+    date = Column(DateTime, nullable=False)
+    start_time = Column(String, nullable=False)  # например "09:00"
+    end_time = Column(String, nullable=False)    # например "10:30"
+    classroom = Column(String, nullable=True)
+
+
+class UrgentNotification(Base):
+    __tablename__ = 'urgent_notifications'
+
+    id = Column(Integer, primary_key=True)
+    group_id = Column(Integer, ForeignKey('groups.id'), nullable=False)
+    sender_id = Column(Integer, nullable=False)  # telegram_id отправителя
+    message = Column(String, nullable=False)
+    sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)

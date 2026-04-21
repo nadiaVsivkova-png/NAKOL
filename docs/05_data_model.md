@@ -132,4 +132,4 @@ Xранит задания.
 | `group_id ` | Integer, FK → users.id | Групповое ID |
 | `sender_id` | Integer | ID отправителя |
 | `message` | String | Сообщение |
-| `sent_at` | Integer | Время отправления |
+| `sent_at` | DataTime | Время отправления |

@@ -1,13 +1,16 @@
 import asyncio
 from aiogram import Bot, Dispatcher
-from routers import schedule, homework
+from handlers.import_session import router as session_router
+from handlers.import_schedule import router as schedule_router
+from handlers.import_homework import router as homework_router
 
 bot = Bot(token="Я НЕ ЗНАЮ НАШ ТОКЕН")
 dp = Dispatcher()
 
 # Подключаем роутеры
-dp.include_router(schedule.router)
-dp.include_router(homework.router)
+dp.include_router(schedule_router)
+dp.include_router(homework_router)
+dp.include_router(session_router)
 
 
 async def main():

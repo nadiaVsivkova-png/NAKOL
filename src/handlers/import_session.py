@@ -26,7 +26,7 @@ class ManualSessionStates(StatesGroup):
 router = Router()
 
 schedule_keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="📊Загрузить Excel-файл")],
-                                                  [KeyboardButton(text="📸Отправить фото(распознаю текст)")],
+                                                  [KeyboardButton(text="📸Отправить фото расписания сессии(распознаю текст)")],
                                                   [KeyboardButton(text="✍️Ввести вручную")]],
                                         resize_keyboard=True,
                                         one_time_keyboard=True)
@@ -60,7 +60,7 @@ async def answer_download(message: Message):
         await message.answer("❌ Шаблон не найден.")
 
 
-@router.message(F.text == "📸Отправить фото(распознаю текст)")
+@router.message(F.text == "📸Отправить фото расписания сессии(распознаю текст)")
 async def handle_photo_schedule(message: Message):
     await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.",
                          reply_markup=ReplyKeyboardRemove())

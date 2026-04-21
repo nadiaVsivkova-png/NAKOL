@@ -83,7 +83,7 @@ class SessionSchedule(Base):
     subject_id = Column(Integer, ForeignKey('subjects.id'), nullable=False)
     date = Column(DateTime, nullable=False)
     start_time = Column(String, nullable=False)  # например "09:00"
-    end_time = Column(String, nullable=False)    # например "10:30"
+    end_time = Column(String, nullable=True)    # например "10:30"
     classroom = Column(String, nullable=True)
 
 

@@ -29,10 +29,7 @@ def close_db(db):
 
 
 def create_session_schedule(group_id, user_id, subject_id, date, start_time, end_time, classroom):
-    """
-    Создаёт запись в расписании сессии.
-    Либо group_id, либо user_id должен быть не NULL.
-    """
+    """Создаёт запись в расписании сессии."""
     db = get_db()
     try:
         schedule = SessionSchedule(
@@ -53,11 +50,7 @@ def create_session_schedule(group_id, user_id, subject_id, date, start_time, end
 
 
 def get_session_schedule(group_id=None, user_id=None):
-    """
-    Возвращает список записей расписания.
-    Если передан group_id — для группы.
-    Если передан user_id — для индивидуала.
-    """
+    """Возвращает список записей расписания"""
     db = get_db()
     try:
         if group_id is not None:
@@ -75,10 +68,7 @@ def get_session_schedule(group_id=None, user_id=None):
 
 
 def delete_session_schedule(schedule_id):
-    """
-    Удаляет запись расписания по id.
-    Возвращает True если удалено, False если не найдено.
-    """
+    """Удаляет запись расписания по id."""
     db = get_db()
     try:
         schedule = db.query(SessionSchedule).filter(

@@ -2,6 +2,7 @@ import random
 import string
 from db import get_db
 from models import Group, GroupMember, User, Subject, Task, UserTask
+from datetime import datetime
 
 def generate_group_code(length=6):
     """
@@ -57,6 +58,7 @@ def create_group(group_name: str, starosta_id: int):
 
 def get_group_by_code(group_code: str):
     db = get_db()
+    "возвращает группу по уникальному коду"
     try:
         group = db.query(Group).filter(Group.group_code == group_code).first()
         if group:
@@ -71,6 +73,7 @@ def get_group_by_code(group_code: str):
         return None
 
 def get_group_by_id(group_id: int):
+    """возвращает группу по id (хранится в таблицфх)"""
     db = get_db()
     try:
         group = db.query(Group).filter(Group.id == group_id).first()
@@ -82,6 +85,7 @@ def get_group_by_id(group_id: int):
         return None
 
 def add_user_to_group(user_id: int, group_id: int):
+    """добавляет пользователя в группу по id из баз данных"""
     db = get_db()
     try:
         # Проверяем, не состоит ли уже пользователь в группе
@@ -120,6 +124,7 @@ def add_user_to_group(user_id: int, group_id: int):
         return False
 
 def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
+    """добавляем пользователя по us в телеграмме и коду группы с использование функции add_user_to_group"""
     db = get_db()
     try:
         # Находим пользователя
@@ -146,6 +151,7 @@ def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
         return False
 
 def get_group_members(group_id: int):
+    """возвращает всех пользователей группы по group_id"""
     db = get_db()
     try:
         members = db.query(User).join(GroupMember).filter(GroupMember.group_id == group_id).all()
@@ -158,15 +164,7 @@ def get_group_members(group_id: int):
         return []
 
 def get_user_groups(user_id: int):
-    """
-    Получает все группы пользователя
-    
-    Параметры:
-        user_id: ID пользователя
-    
-    Возвращает:
-        список групп
-    """
+    """возвращает все группы пользователя по id из таблиц"""
     db = get_db()
     try:
         groups = db.query(Group).join(GroupMember).filter(GroupMember.user_id == user_id).all()
@@ -178,7 +176,7 @@ def get_user_groups(user_id: int):
         return []
 
 def is_user_in_group(user_id: int, group_id: int):
-    
+    """проверяет существует ли пользователь в группе"""
     db = get_db()
     try:
         member = db.query(GroupMember).filter(
@@ -191,13 +189,10 @@ def is_user_in_group(user_id: int, group_id: int):
         print(f" Ошибка: {e}")
         db.close()
         return False
-from datetime import datetime
-from models import Subject, Task
 
 def delete_subject(subject_id: int, user_id=None, group_id=None):
     """
-    Удаляет предмет и все его будущие задания.
-    Проверяет, что предмет принадлежит пользователю или группе.
+    Удаляет предмет и все его задания.
     Возвращает количество удалённых заданий, или None если предмет не найден / нет прав.
     """
     db = get_db()
@@ -243,6 +238,72 @@ def delete_subject(subject_id: int, user_id=None, group_id=None):
         db.close()
         return None
 
+def create_task(subject_id: int, title: str, deadline, group_id=None, created_by: int = None, photo_file_id=None):
+    """
+    Создаёт задание. photo_file_id не обязателен, по умолчанию None
+    """
+    db = get_db()
+    try:
+        task = Task(
+            subject_id=subject_id,
+            title=title,
+            deadline=deadline,
+            group_id=group_id,
+            created_by=created_by,
+            photo_file_id=photo_file_id
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        print(f"Задание '{title}' создано (id={task.id})")
+        db.close()
+        return task
+    except Exception as e:
+        print(f"Ошибка при создании задания: {e}")
+        db.rollback()
+        db.close()
+        return None
+def get_task_photo(task_id: int):
+    """возвращает задание с фото по id задания"""
+    db = get_db()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        db.close()
+        if task:
+            return task.photo_file_id
+        return None
+    except Exception as e:
+        print(f"Ошибка при получении фото задания: {e}")
+        db.close()
+        return None
+
+def get_user_tasks(user_id: int):
+    """возвращает список всех заданий пользователя по его id из таблиц"""
+    db = get_db()
+    try:
+        tasks = db.query(Task).join(UserTask).filter(
+            UserTask.user_id == user_id,
+            UserTask.status == "active"
+        ).all()
+
+        result = [
+            {
+                "id": task.id,
+                "title": task.title,
+                "deadline": task.deadline,
+                "subject_id": task.subject_id,
+                "photo_file_id": task.photo_file_id  # None если фото нет
+            }
+            for task in tasks
+        ]
+
+        print(f"Заданий у пользователя {user_id}: {len(result)}")
+        db.close()
+        return result
+    except Exception as e:
+        print(f"Ошибка при получении заданий: {e}")
+        db.close()
+        return []
 # Тестирование 
 if __name__ == "__main__":
     print("=" * 40)
@@ -321,79 +382,8 @@ if __name__ == "__main__":
                         from group_functions import is_user_in_group
                         in_group = is_user_in_group(member_id, group_id)
                         print(f"\n6. ПРОВЕРКА ЧЛЕНСТВА: {in_group}")
-def create_task(subject_id: int, title: str, deadline, group_id=None, created_by: int = None, photo_file_id=None):
-    """
-    Создаёт задание. photo_file_id — необязательный file_id фото из Telegram.
-    """
-    db = get_db()
-    try:
-        task = Task(
-            subject_id=subject_id,
-            title=title,
-            deadline=deadline,
-            group_id=group_id,
-            created_by=created_by,
-            photo_file_id=photo_file_id
-        )
-        db.add(task)
-        db.commit()
-        db.refresh(task)
-        print(f"Задание '{title}' создано (id={task.id})")
-        db.close()
-        return task
-    except Exception as e:
-        print(f"Ошибка при создании задания: {e}")
-        db.rollback()
-        db.close()
-        return None
-def get_task_photo(task_id: int):
-    """
-    Возвращает photo_file_id задания или None, если фото нет.
-    """
-    db = get_db()
-    try:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        db.close()
-        if task:
-            return task.photo_file_id
-        return None
-    except Exception as e:
-        print(f"Ошибка при получении фото задания: {e}")
-        db.close()
-        return None
-from models import UserTask
-
-def get_user_tasks(user_id: int):
-    """
-    Возвращает список активных заданий пользователя.
-    Каждый элемент — dict с полями task и photo_file_id.
-    """
-    db = get_db()
-    try:
-        tasks = db.query(Task).join(UserTask).filter(
-            UserTask.user_id == user_id,
-            UserTask.status == "active"
-        ).all()
-
-        result = [
-            {
-                "id": task.id,
-                "title": task.title,
-                "deadline": task.deadline,
-                "subject_id": task.subject_id,
-                "photo_file_id": task.photo_file_id  # None если фото нет
-            }
-            for task in tasks
-        ]
-
-        print(f"Заданий у пользователя {user_id}: {len(result)}")
-        db.close()
-        return result
-    except Exception as e:
-        print(f"Ошибка при получении заданий: {e}")
-        db.close()
-        return []
-
     print("\n" + "=" * 40)
     print("ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
     print("=" * 40)
+
+    

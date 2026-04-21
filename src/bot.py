@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher
 from handlers.import_session import router as session_router
 from handlers.import_schedule import router as schedule_router
 from handlers.import_homework import router as homework_router
+from handlers.session_schedule import router as seschedule_router
 
 bot = Bot(token="Я НЕ ЗНАЮ НАШ ТОКЕН")
 dp = Dispatcher()
@@ -11,6 +12,7 @@ dp = Dispatcher()
 dp.include_router(schedule_router)
 dp.include_router(homework_router)
 dp.include_router(session_router)
+dp.include_router(seschedule_router)
 
 
 async def main():

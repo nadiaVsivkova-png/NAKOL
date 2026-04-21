@@ -29,5 +29,5 @@ async def handle_manual_homework(message: Message):
     await message.answer("Введи задание в формате:\n"
                          "Предмет, Название, Дедлайн\n"
                          "Например: Математика, №345, 28.03.2026\n\n"
-                         "Или отправь /done когда закончишь",
+                         "Или отправь /ready когда закончишь",
                          reply_markup=ReplyKeyboardRemove())

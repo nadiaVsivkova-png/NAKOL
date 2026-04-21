@@ -42,7 +42,6 @@
 | `user_id` | Integer, FK → users.id | ID пользователя |
 
 ### Subject(Base):
-
 Хранит предметы (могут быть общими для группы или личными).
 
 | Поле | Тип | Описание |
@@ -53,7 +52,6 @@
 | `user_id` | Integer, FK → users.id | Для личных предметов |
 
 ### Task(Base):
-
 Xранит задания.
 
 | Поле | Тип | Описание |
@@ -64,6 +62,7 @@ Xранит задания.
 | `deadline` | DateTime | Дедлайн |
 | `group_id` | Integer, FK → groups.id | Групповое/личное |
 | `created_by` | Integer | Telegram ID создателя |
+| `photo_file_id` |  String | Фото заданий |
 
 ### UserTask(Base):
 
@@ -78,7 +77,6 @@ Xранит задания.
 | `completed_at` | DateTime, nullable | Дедлайн |
 
 ### ReminderSetting(Base):
-
 Индивидуальные настройки напоминаний.
 
 | Поле | Тип | Описание |
@@ -88,6 +86,7 @@ Xранит задания.
 | `mode` | String | Режим: `auto` / `custom` / `off` |
 | `reminder_24h_time` | String, nullable | Время напоминания за 24 часа |
 | `reminder_3h_enabled` | Boolean | Включено ли напоминание за 3 часа |
+| `custom_times` | String, JSON | Изменение времени напоминаний |
 
 ### Meme(Base):
 Хранит мемы для мотивации.
@@ -96,4 +95,41 @@ Xранит задания.
 |------|-----|----------|
 | `id` | Integer | Первичный ключ |
 | `type` | String | Тип: `photo` / `text` |
-| `content` | String | текст мема или путь к фото |
+| `content` | String | Текст мема или путь к фото |
+
+### Schedule:
+Расписание.
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | Integer | Первичный ключ |
+| `group_id ` /  `user_id` | Integer, FK → users.id | Групповое/личное ID |
+| `subject_id` | Integer, FK → subjects.id | Предмет |
+| `day_of_week` | Integer | День недели |
+| `start_time` | Integer | Время начала |
+| `end_time` | Integer | Время конца |
+| `classroom` | String | Аудитория |
+
+### SessionSchedule:
+Расписание сессии.
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | Integer | Первичный ключ |
+| `group_id ` /  `user_id` | Integer, FK → users.id | Групповое/личное ID |
+| `subject_id` | Integer, FK → subjects.id | Предмет |
+| `day_of_week` | Integer | День недели |
+| `start_time` | Integer | Время начала |
+| `end_time` | Integer | Время конца |
+| `classroom` | String | Аудитория |
+
+### UrgentNotifications:
+Уведомления от старосты.
+ 
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | Integer | Первичный ключ |
+| `group_id ` | Integer, FK → users.id | Групповое ID |
+| `sender_id` | Integer | ID отправителя |
+| `message` | String | Сообщение |
+| `sent_at` | Integer | Время отправления |

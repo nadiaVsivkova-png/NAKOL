@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, \
     InlineKeyboardButton
 from aiogram.filters import Command
@@ -6,9 +6,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from database.db import get_db, close_db
-from database.models import User, Subject
+from database.models import User, Subject, Group, Task
 from database.group_functions import create_task
 from datetime import datetime
+import asyncio
 
 router = Router()
 
@@ -109,7 +110,6 @@ async def process_photo_subject(message: Message, state: FSMContext):
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-
 
     subject = db.query(Subject).filter(
         Subject.name == subject_name,
@@ -366,9 +366,8 @@ async def finish_and_save(callback, state: FSMContext):
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(callback.from_user.id)).first()
-    close_db(db)
 
-
+    saved_tasks = []
     saved_count = 0
     errors = []
 
@@ -387,23 +386,167 @@ async def finish_and_save(callback, state: FSMContext):
             errors.append(f"Задание {i}: {hw['subject_name']}")
         else:
             saved_count += 1
+            saved_tasks.append(task)
+
+    close_db(db)
 
     if errors:
         response = f"⚠️ **Сохранено частично:** {saved_count}/{len(homeworks)}\n\n"
         response += f"Ошибки:\n" + "\n".join(errors[:5])
-    else:
-        response = f"✅ **Все {saved_count} заданий успешно сохранены!**"
+        await callback.message.edit_text(response)
+        await state.clear()
+        await callback.answer()
+        return
 
-    await callback.message.edit_text(response)
-    await state.clear()
+    # Сохраняем ID заданий в состояние для последующей отправки
+    task_ids = [t.id for t in saved_tasks]
+    await state.update_data(saved_task_ids=task_ids)
+
+    # Просто выводим сообщение без кнопки
+    await callback.message.edit_text(
+        f"✅ **{saved_count} заданий успешно сохранены!**\n\n"
+        f"📊 Сохранено: {saved_count}\n\n"
+        f"📢 Чтобы отправить задания в группу, напиши в чат команду:\n"
+        f"`/send_to_group`\n\n"
+        f"Ты можешь отправить их сейчас или позже.",
+        parse_mode="Markdown"
+    )
+
     await callback.answer()
 
 
-@router.message(Command("cancel"))
-async def cancel_import(message: Message, state: FSMContext):
-    """Отмена импорта"""
-    await state.clear()
-    await message.answer(
-        "❌ Импорт домашнего задания отменён.",
-        reply_markup=ReplyKeyboardRemove()
+async def send_single_task_to_group(task_id: int, group_telegram_id: int, bot: Bot):
+    """
+    Отправляет одно задание в группу по его ID.
+
+    Args:
+        task_id: ID задания в БД
+        group_telegram_id: Telegram ID группы (куда отправлять)
+
+    Returns:
+        bool: True если успешно, False если ошибка
+    """
+    db = get_db()
+
+    # Получаем задание из БД
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        close_db(db)
+        return False
+
+    # Получаем предмет (чтобы вывести название)
+    subject = db.query(Subject).filter(Subject.id == task.subject_id).first()
+    subject_name = subject.name if subject else "Неизвестный предмет"
+    close_db(db)
+
+    # Форматируем дату
+    deadline_str = task.deadline.strftime("%d.%m.%Y")
+
+    # Текст сообщения
+    message_text = (
+        f"📚 **Новое задание в группе!**\n\n"
+        f"📖 Предмет: {subject_name}\n"
+        f"📝 Задание: {task.title}\n"
+        f"📅 Дедлайн: {deadline_str}\n"
     )
+
+    # Кнопка для просмотра фото (если есть)
+    keyboard = None
+    if task.photo_file_id:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📸 Показать фото", callback_data=f"show_photo:{task.id}")]
+        ])
+
+    # Отправляем в группу
+    try:
+        if task.photo_file_id:
+            await bot.send_photo(
+                chat_id=group_telegram_id,
+                photo=task.photo_file_id,
+                caption=message_text,
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+        else:
+            await bot.send_message(
+                chat_id=group_telegram_id,
+                text=message_text,
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+        return True
+    except Exception as e:
+        print(f"Ошибка отправки задания {task_id} в группу: {e}")
+        return False
+
+
+@router.message(Command("send_to_group"))
+async def send_to_group_command(message: Message, state: FSMContext):
+    """Отправляет задания в группу по команде"""
+    data = await state.get_data()
+    task_ids = data.get('saved_task_ids', [])
+
+    if not task_ids:
+        await message.answer(
+            "❌ Нет заданий для отправки.\n\n"
+            "Сначала добавь задания через /import_homework"
+        )
+        return
+
+    # Получаем пользователя и его группу
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+
+    if not user or not user.group_id:
+        await message.answer(
+            "❌ У тебя нет группы для отправки."
+        )
+        close_db(db)
+        return
+
+    group_id = user.group_id
+    group = db.query(Group).filter(Group.id == group_id).first()
+    group_telegram_id = group.telegram_id if group else None
+
+    close_db(db)
+
+    if not group_telegram_id:
+        await message.answer("❌ Группа не найдена")
+        return
+
+    await message.answer(f"📤 Отправляю {len(task_ids)} заданий в группу...")
+
+    sent_count = 0
+    for task_id in task_ids:
+        success = await send_single_task_to_group(task_id, group_telegram_id, message.bot)
+        if success:
+            sent_count += 1
+        await asyncio.sleep(0.5)
+
+    await message.answer(
+        f"✅ **Отправлено в группу:** {sent_count}/{len(task_ids)}\n\n"
+        f"Студенты группы получили уведомления."
+    )
+
+    # Очищаем ID заданий после отправки
+    await state.update_data(saved_task_ids=[])
+
+
+@router.callback_query(F.data.startswith("show_photo:"))
+async def show_photo(callback: CallbackQuery):
+    """Отправляет фото задания при нажатии на кнопку"""
+    task_id = int(callback.data.split(":")[1])
+
+    db = get_db()
+    task = db.query(Task).filter(Task.id == task_id).first()
+    close_db(db)
+
+    if not task or not task.photo_file_id:
+        await callback.answer("❌ Фото не найдено", show_alert=True)
+        return
+
+    await callback.message.answer_photo(
+        photo=task.photo_file_id,
+        caption=f"📸 Фото к заданию «{task.title}»"
+    )
+    await callback.answer()

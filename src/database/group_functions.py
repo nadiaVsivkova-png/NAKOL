@@ -5,9 +5,8 @@ from models import Group, GroupMember, User, Subject, Task, UserTask
 from datetime import datetime
 
 def generate_group_code(length=6):
-    """
-    Генерирует случайный код группы
-    """
+    """Генерирует случайный код группы"""
+
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 def create_group(group_name: str, starosta_id: int):
@@ -16,7 +15,6 @@ def create_group(group_name: str, starosta_id: int):
         # Генерируем уникальный код группы
         while True:
             group_code = generate_group_code()
-            # Проверяем, не занят ли код
             existing = db.query(Group).filter(Group.group_code == group_code).first()
             if not existing:
                 break
@@ -57,8 +55,8 @@ def create_group(group_name: str, starosta_id: int):
         return None
 
 def get_group_by_code(group_code: str):
-    db = get_db()
     "возвращает группу по уникальному коду"
+    db = get_db()
     try:
         group = db.query(Group).filter(Group.group_code == group_code).first()
         if group:
@@ -73,7 +71,7 @@ def get_group_by_code(group_code: str):
         return None
 
 def get_group_by_id(group_id: int):
-    """возвращает группу по id (хранится в таблицфх)"""
+    """возвращает группу по id (хранится в таблицах)"""
     db = get_db()
     try:
         group = db.query(Group).filter(Group.id == group_id).first()
@@ -127,14 +125,12 @@ def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
     """добавляем пользователя по us в телеграмме и коду группы с использование функции add_user_to_group"""
     db = get_db()
     try:
-        # Находим пользователя
         user = db.query(User).filter(User.telegram_id == telegram_id).first()
         if not user:
             print(f" Пользователь не найден")
             db.close()
             return False
         
-        # Находим группу по коду
         group = db.query(Group).filter(Group.group_code == group_code).first()
         if not group:
             print(f" Группа с кодом {group_code} не найдена")
@@ -142,7 +138,6 @@ def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
             return False
         
         db.close()
-        # Добавляем пользователя в группу
         return add_user_to_group(user.id, group.id)
         
     except Exception as e:
@@ -191,20 +186,15 @@ def is_user_in_group(user_id: int, group_id: int):
         return False
 
 def delete_subject(subject_id: int, user_id=None, group_id=None):
-    """
-    Удаляет предмет и все его задания.
-    Возвращает количество удалённых заданий, или None если предмет не найден / нет прав.
-    """
+    """Удаляет предмет и все его задания"""
     db = get_db()
     try:
-        # Находим предмет
         subject = db.query(Subject).filter(Subject.id == subject_id).first()
         if not subject:
             print(f"Предмет с id={subject_id} не найден")
             db.close()
             return None
 
-        # Проверяем права: предмет должен принадлежать этой группе или этому пользователю
         if group_id is not None and subject.group_id != group_id:
             print(f"Предмет не принадлежит группе {group_id}")
             db.close()
@@ -214,7 +204,7 @@ def delete_subject(subject_id: int, user_id=None, group_id=None):
             db.close()
             return None
 
-        # Удаляем только будущие задания (deadline > сейчас)
+        # Удаляем только просроченные
         deleted_tasks = db.query(Task).filter(
             Task.subject_id == subject_id,
             Task.deadline > datetime.now()
@@ -224,7 +214,6 @@ def delete_subject(subject_id: int, user_id=None, group_id=None):
         for task in deleted_tasks:
             db.delete(task)
 
-        # Удаляем сам предмет
         db.delete(subject)
         db.commit()
 
@@ -239,9 +228,7 @@ def delete_subject(subject_id: int, user_id=None, group_id=None):
         return None
 
 def create_task(subject_id: int, title: str, deadline, group_id=None, created_by: int = None, photo_file_id=None):
-    """
-    Создаёт задание. photo_file_id не обязателен, по умолчанию None
-    """
+    """Создаёт задание. photo_file_id не обязателен, по умолчанию None"""
     db = get_db()
     try:
         task = Task(
@@ -304,6 +291,44 @@ def get_user_tasks(user_id: int):
         print(f"Ошибка при получении заданий: {e}")
         db.close()
         return []
+    
+
+def get_or_create_subject(name: str, group_id=None, user_id=None):
+    """возвращает  id предмета если он уже есть, если нет создает для конкретного пользователя/группы и возвращает его id"""
+    db = get_db()
+    try:
+        query = db.query(Subject).filter(Subject.name == name)
+
+        if group_id is not None:
+            query = query.filter(Subject.group_id == group_id)
+        elif user_id is not None:
+            query = query.filter(Subject.user_id == user_id)
+
+        subject = query.first()
+
+        if subject:
+            print(f"Предмет '{name}' уже существует (id={subject.id})")
+            return subject.id
+
+        new_subject = Subject(
+            name=name,
+            group_id=group_id,
+            user_id=user_id
+        )
+        db.add(new_subject)
+        db.commit()
+        db.refresh(new_subject)
+        print(f"Предмет '{name}' создан (id={new_subject.id})")
+        return new_subject.id
+
+    except Exception as e:
+        print(f"Ошибка при получении/создании предмета: {e}")
+        db.rollback()
+        return None
+    finally:
+        db.close()
+
+
 # Тестирование 
 if __name__ == "__main__":
     print("=" * 40)

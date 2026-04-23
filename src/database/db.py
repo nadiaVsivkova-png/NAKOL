@@ -81,3 +81,24 @@ def delete_session_schedule(schedule_id):
         return True
     finally:
         close_db(db)
+from models import Schedule
+
+def create_schedule(group_id, user_id, subject_id, weekday, start_time, end_time, classroom):
+    """Создаёт запись в обычном расписании."""
+    db = get_db()
+    try:
+        schedule = Schedule(
+            group_id=group_id,
+            user_id=user_id,
+            subject_id=subject_id,
+            weekday=weekday,
+            start_time=start_time,
+            end_time=end_time,
+            classroom=classroom
+        )
+        db.add(schedule)
+        db.commit()
+        db.refresh(schedule)
+        return schedule
+    finally:
+        close_db(db)

@@ -2,8 +2,8 @@ import os
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, FSInputFile
 from aiogram.filters import Command
-from templates.excel_parser import parse_excel_schedule
-from templates.photo_parser import ocr_photo, parse_schedule_from_photo
+from parsers.excel_parser import parse_excel_schedule
+from parsers.photo_parser import ocr_photo, parse_schedule_from_photo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from database.db import create_session_schedule, get_db, close_db

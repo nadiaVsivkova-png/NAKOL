@@ -3,6 +3,7 @@ from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, FSInputFile
 from aiogram.filters import Command
 from parsers.excel_parser import parse_excel_schedule
+from parsers.photo_parser import ocr_photo, parse_schedule_from_photo
 
 router = Router()
 
@@ -53,7 +54,7 @@ async def handle_manual_schedule(message: Message):
                          "Введи первое занятие в формате:\n"
                          "День, Время начала, Время конца, Предмет\n"
                          "Например: пн, 10:00, 11:30, Математика\n\n"
-                         "Или отправь /done когда закончишь",
+                         "Или отправь /cancel когда закончишь",
                          reply_markup=ReplyKeyboardRemove())
 
 
@@ -93,3 +94,55 @@ async def handle_document(message: Message):
             "Для расписания: День, Время начала, Время конца, Предмет\n"
             "Для домашки: Предмет, Название, Дедлайн"
         )
+
+
+@router.message(F.photo)
+async def handle_photo(message: Message):
+    await message.answer("📸 Фото получено. Начинаю распознавание текста...\n⏳ Это может занять 10-30 секунд")
+
+    photo = message.photo[-1]
+    file_info = await message.bot.get_file(photo.file_id)
+
+    temp_path = f"temp_photo_{message.message_id}.jpg"
+    await message.bot.download_file(file_info.file_path, temp_path)
+
+    try:
+        recognized_text = ocr_photo(temp_path)
+
+        if recognized_text:
+            await message.answer(f"📝 Распознанный текст:\n\n{recognized_text[:500]}")
+
+            lessons = parse_schedule_from_photo(recognized_text)
+
+            if lessons:
+                response = "✅ Расписание успешно распознано!\n\n"
+                current_day = ""
+                for lesson in lessons:
+                    if lesson['day'] != current_day:
+                        current_day = lesson['day']
+                        response += f"\n📅 {current_day.upper()}:\n"
+                    response += f"   ⏰ {lesson['start_time']}-{lesson['end_time']} - {lesson['subject']}\n"
+
+                await message.answer(response)
+
+            else:
+                await message.answer(
+                    "⚠️ Не удалось распознать структуру расписания.\n\n"
+                    f"Распознанный текст:\n{recognized_text[:300]}\n\n"
+                    "Проверь формат фото или используй Excel файл."
+                )
+        else:
+            await message.answer(
+                "❌ Не удалось распознать текст на фото.\n\n"
+                "Попробуй:\n"
+                "- Сделать фото более четким\n"
+                "- Улучшить освещение\n"
+                "- Использовать Excel файл"
+            )
+
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при распознавании: {e}")
+
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)

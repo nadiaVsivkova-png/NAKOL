@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from database.db import get_db, close_db
-from database.models import User
+from database.models import User, Subject
 from database.db import get_session_schedule
 from datetime import datetime
 
@@ -36,10 +36,13 @@ def extract_session_data(session):
         classroom = getattr(session, 'classroom', '')
 
         # Получаем название предмета
-        if hasattr(session, 'subject') and session.subject:
-            subject_name = session.subject.name
-        else:
-            subject_name = "Неизвестно"
+        subject_name = "Неизвестно"
+        if hasattr(session, 'subject_id') and session.subject_id:
+            db = get_db()
+            subject = db.query(Subject).filter(Subject.id == session.subject_id).first()
+            if subject:
+                subject_name = subject.name
+            close_db(db)
     else:
         # Это словарь
         date_value = session.get('date')

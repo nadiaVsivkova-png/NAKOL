@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from database.db import get_db, close_db
 from database.models import User, Subject, Group, Task
-from database.group_functions import create_task
+from database.group_functions import create_task, get_or_create_subject
 from datetime import datetime
 import asyncio
 
@@ -110,27 +110,25 @@ async def process_photo_subject(message: Message, state: FSMContext):
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-
-    subject = db.query(Subject).filter(
-        Subject.name == subject_name,
-        Subject.user_id == user.id
-    ).first()
-
-    if not subject:
-        await message.answer(
-            f"❌ Предмет «{subject_name}» не найден.\n\n"
-            f"Введи другое название:"
-        )
-        close_db(db)
-        return
-
     close_db(db)
 
-    await state.update_data(temp_subject_id=subject.id, temp_subject_name=subject.name)
+    if user.is_elder and user.group_id:
+        subject_id = get_or_create_subject(subject_name, group_id=user.group_id)
+    else:
+        subject_id = get_or_create_subject(subject_name, user_id=user.id)
+
+    if subject_id is None:
+        await message.answer(
+            f"❌ Не удалось создать или найти предмет «{subject_name}».\n\n"
+            f"Попробуй другое название:"
+        )
+        return
+
+    await state.update_data(temp_subject_id=subject_id, temp_subject_name=subject_name)
     await state.set_state(HomeworkImportStates.waiting_for_photo_deadline)
 
     await message.answer(
-        f"✅ Предмет: {subject.name}\n\n"
+        f"✅ Предмет: {subject_name}\n\n"
         "Теперь введи **дедлайн** в формате:\n"
         "• ДД.ММ.ГГГГ (например: 25.12.2026)\n"
         "• ДД.ММ.ГГ (например: 25.12.26)\n\n"
@@ -227,33 +225,25 @@ async def process_manual_subject(message: Message, state: FSMContext):
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-
-    if not user:
-        await message.answer("❌ Ты не зарегистрирован. Используй /start")
-        close_db(db)
-        await state.clear()
-        return
-
-    subject = db.query(Subject).filter(
-        Subject.name == subject_name,
-        Subject.user_id == user.id
-    ).first()
-
-    if not subject:
-        await message.answer(
-            f"❌ Предмет «{subject_name}» не найден.\n\n"
-            f"Введи другое название:"
-        )
-        close_db(db)
-        return
-
     close_db(db)
 
-    await state.update_data(temp_subject_id=subject.id, temp_subject_name=subject.name)
+    if user.is_elder and user.group_id:
+        subject_id = get_or_create_subject(subject_name, group_id=user.group_id)
+    else:
+        subject_id = get_or_create_subject(subject_name, user_id=user.id)
+
+    if subject_id is None:
+        await message.answer(
+            f"❌ Не удалось создать или найти предмет «{subject_name}».\n\n"
+            f"Попробуй другое название:"
+        )
+        return
+
+    await state.update_data(temp_subject_id=subject_id, temp_subject_name=subject_name)
     await state.set_state(HomeworkImportStates.waiting_for_task_text)
 
     await message.answer(
-        f"✅ Предмет: {subject.name}\n\n"
+        f"✅ Предмет: {subject_name}\n\n"
         "Теперь введи **текст задания** (что нужно сделать):\n\n"
         "❌ /cancel - отменить"
     )

@@ -1,30 +1,27 @@
 import sys
 import os
-
-# Добавляем путь к проекту (чтобы Python нашел наши модули)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
 from src.database.db import engine
 from src.database.models import Base
+# Добавляем путь к проекту 
+
+
 
 def create_tables():
-    """
-    Создает все таблицы в базе данных
-    """
+    """Создает все таблицы в базе данных"""
     print("Создание таблиц в базе данных...")
-    
-    # Создаем все таблицы
+
     Base.metadata.create_all(bind=engine)
-    
+
     print("Таблицы успешно созданы!")
     print("Файл базы данных: nakol.db")
 
 def drop_tables():
-    """
-    Удаляет все таблицы из базы данных (ОСТОРОЖНО!)
-    """
+    """Удаляет все таблицы из базы данных (не пользуемся после того, как бот запущен окончательно)"""
     print("Удаление всех таблиц...")
+
     Base.metadata.drop_all(bind=engine)
+    
     print("Таблицы удалены!")
 
 if __name__ == "__main__":

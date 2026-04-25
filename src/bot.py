@@ -6,9 +6,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from utils.cleanup_job import delete_old_tasks, delete_old_schedules
-BOT_TOKEN = "8798840591:AAG-tpdOTgUkGQKwgXGNvUplOjWQ-Pgh2g0"
 import os
-from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 from handlers.start import router as start_router
 from handlers.tasks import router as tasks_router

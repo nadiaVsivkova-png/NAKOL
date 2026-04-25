@@ -9,6 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 from database.db import create_session_schedule, get_db, close_db
 from database.models import User, Subject
 from datetime import datetime
+from database.group_functions import get_or_create_subject
 
 
 class SessionImportStates(StatesGroup):
@@ -66,7 +67,7 @@ async def handle_photo_schedule(message: Message):
                          reply_markup=ReplyKeyboardRemove())
 
 
-@router.message(F.text == "✍️Ввести расписание вручную")
+@router.message(F.text == "✍️Ввести вручную")
 async def start_manual_input(message: Message, state: FSMContext):
     """Начинаем пошаговый ввод расписания"""
     # Инициализируем список сессий в состоянии
@@ -331,7 +332,7 @@ async def handle_document(message: Message, state: FSMContext):
         await message.answer(response)
         await message.answer(
             "❓ **Всё верно?**\n\n"
-            "✅ /confirm - сохранить расписание\n"
+            "✅ /ready - сохранить расписание\n"
             "❌ /cancel - отменить импорт"
         )
     else:
@@ -339,7 +340,7 @@ async def handle_document(message: Message, state: FSMContext):
         os.remove(temp_path)
 
 
-@router.message(Command("confirm"))
+@router.message(Command("ready"))
 async def confirm_schedule(message: Message, state: FSMContext):
     data = await state.get_data()
     sessions = data.get('sessions')
@@ -350,52 +351,46 @@ async def confirm_schedule(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    # Получаем информацию о пользователе из БД
+    # Получаем пользователя из БД
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-
-    if not user:
-        await message.answer("❌ Вы не зарегистрированы. Используйте /start")
-        close_db(db)
-        await state.clear()
-        return
-
-    user_db_id = user.id
-    group_id = user.group_id  # если есть группа, иначе None
-
     close_db(db)
 
     saved_count = 0
     errors = []
 
-    db = get_db()
-    for session in sessions:
-        subject = db.query(Subject).filter(
-            Subject.name == session['subject_name'],
-            Subject.user_id == user_db_id
-        ).first()
+    # Определяем group_id и user_id для сохранения
+    if user.is_elder and user.group_id:
+        group_id = user.group_id
+        user_id = None
+    else:
+        group_id = None
+        user_id = user.id
 
-        if not subject:
-            errors.append(f"Предмет '{session['subject_name']}' не найден")
+    for session in sessions:
+        # ИСПОЛЬЗУЕМ get_or_create_subject
+        if user.is_elder and user.group_id:
+            subject_id = get_or_create_subject(session['subject_name'], group_id=user.group_id)
+        else:
+            subject_id = get_or_create_subject(session['subject_name'], user_id=user.id)
+
+        if subject_id is None:
+            errors.append(f"Предмет '{session['subject_name']}' не удалось создать/найти")
             continue
 
-        subject_id = subject.id
         try:
             result = create_session_schedule(
-                group_id=group_id,  # ID группы (или None для личного)
-                user_id=user_db_id,  # ID пользователя (или None для группы)
-                subject_id=subject_id,  # ID предмета (нужно получить!)
-                date=session['date'],  # дата (datetime объект)
-                start_time=session['start_time'],  # "09:00"
-                end_time=session.get('end_time', ""),  # время окончания (если есть)
-                classroom=session.get('classroom', "")  # аудитория
+                group_id=group_id,
+                user_id=user_id,
+                subject_id=subject_id,
+                date=session['date'],
+                start_time=session['start_time'],
+                end_time=session.get('end_time', ""),
+                classroom=session.get('classroom', "")
             )
             saved_count += 1
-
         except Exception as e:
             errors.append(f"{session.get('subject_name')}: {e}")
-
-    close_db(db)
 
     # Очищаем временные файлы
     if temp_path and os.path.exists(temp_path):

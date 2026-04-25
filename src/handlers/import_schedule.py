@@ -53,7 +53,7 @@ async def handle_manual_schedule(message: Message):
                          "Введи первое занятие в формате:\n"
                          "День, Время начала, Время конца, Предмет\n"
                          "Например: пн, 10:00, 11:30, Математика\n\n"
-                         "Или отправь /done когда закончишь",
+                         "Или отправь /cancel когда закончишь",
                          reply_markup=ReplyKeyboardRemove())
 
 

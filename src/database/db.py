@@ -33,12 +33,12 @@ def create_session_schedule(group_id, user_id, subject_id, date, start_time, end
     db = get_db()
     try:
         schedule = SessionSchedule(
-            group_id=group_id,       # для группы — заполнен, для индивидуала — None
-            user_id=user_id,         # для индивидуала — заполнен, для группы — None
+            group_id=group_id,       
+            user_id=user_id,         
             subject_id=subject_id,
-            date=date,               # объект datetime
-            start_time=start_time,   # строка, например "09:00"
-            end_time=end_time,       # строка, например "10:30"
+            date=date,               
+            start_time=start_time,   
+            end_time=end_time,       
             classroom=classroom
         )
         db.add(schedule)

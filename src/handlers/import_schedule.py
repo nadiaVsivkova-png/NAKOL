@@ -29,7 +29,7 @@ schedule_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="📊Загрузить Excel-файл(рекомендую)")],
         [KeyboardButton(text="📸Отправить фото(распознаю текст)")],
-        [KeyboardButton(text="✍️Ввести вручную")]
+        [KeyboardButton(text="✍️Ввести расписание вручную")]
     ],
     resize_keyboard=True,
     one_time_keyboard=True
@@ -74,7 +74,7 @@ async def handle_photo_schedule(message: Message):
 
 
 # ==================== РУЧНОЙ ВВОД ====================
-@router.message(F.text == "✍️Ввести вручную")
+@router.message(F.text == "✍️Ввести расписание вручную")
 async def start_manual_input(message: Message, state: FSMContext):
     await state.clear()
     await state.update_data(lessons=[])

@@ -72,7 +72,7 @@ async def show_session_schedule(message: Message, state: FSMContext):
     close_db(db)
 
     # Получаем расписание в зависимости от роли пользователя
-    if user.is_elder and user.group_id:
+    if user.role == "starosta" and user.group_id:
         sessions = get_session_schedule(group_id=user.group_id)
         schedule_type = "📚 **Расписание сессии для группы**"
     else:

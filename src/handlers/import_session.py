@@ -27,8 +27,9 @@ class ManualSessionStates(StatesGroup):
 router = Router()
 
 schedule_keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="📊Загрузить Excel-файл")],
-                                                  [KeyboardButton(text="📸Отправить фото расписания сессии(распознаю текст)")],
-                                                  [KeyboardButton(text="✍️Ввести расписание вручную")]],
+                                                  [KeyboardButton(
+                                                      text="📸Отправить фото расписания сессии(распознаю текст)")],
+                                                  [KeyboardButton(text="✍️Ввести вручную")]],
                                         resize_keyboard=True,
                                         one_time_keyboard=True)
 
@@ -360,7 +361,7 @@ async def confirm_schedule(message: Message, state: FSMContext):
     errors = []
 
     # Определяем group_id и user_id для сохранения
-    if user.is_elder and user.group_id:
+    if user.role == "starosta" and user.group_id:
         group_id = user.group_id
         user_id = None
     else:
@@ -369,7 +370,7 @@ async def confirm_schedule(message: Message, state: FSMContext):
 
     for session in sessions:
         # ИСПОЛЬЗУЕМ get_or_create_subject
-        if user.is_elder and user.group_id:
+        if user.role == "starosta" and user.group_id:
             subject_id = get_or_create_subject(session['subject_name'], group_id=user.group_id)
         else:
             subject_id = get_or_create_subject(session['subject_name'], user_id=user.id)

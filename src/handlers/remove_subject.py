@@ -28,7 +28,7 @@ def get_user_subjects(user_id: int, group_id: int = None):
     try:
         user = db.query(User).filter(User.id == user_id).first()
 
-        if user and user.is_elder and group_id:
+        if user and user.role == "starosta" and group_id:
             # Староста - предметы группы
             subjects = db.query(Subject).filter(Subject.group_id == group_id).all()
         else:
@@ -184,7 +184,7 @@ async def process_confirmation(callback: CallbackQuery, state: FSMContext):
     )
 
     # ВЫЗЫВАЕМ ФУНКЦИЮ delete_subject
-    if user.is_elder and user.group_id:
+    if user.role == "starosta" and user.group_id:
         # Староста удаляет предмет из группы
         deleted_count = delete_subject(
             subject_id=subject_id,

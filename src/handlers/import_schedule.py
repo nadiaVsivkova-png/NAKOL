@@ -151,7 +151,7 @@ async def process_subject(message: Message, state: FSMContext):
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
     close_db(db)
 
-    if user.is_elder and user.group_id:
+    if user.role == "starosta" and user.group_id:
         subject_id = get_or_create_subject(subject_name, group_id=user.group_id)
     else:
         subject_id = get_or_create_subject(subject_name, user_id=user.id)
@@ -207,7 +207,7 @@ async def finish_manual(message: Message, state: FSMContext):
 
     saved_count = 0
     for lesson in lessons:
-        if user.is_elder and user.group_id:
+        if user.role == "starosta" and user.group_id:
             group_id = user.group_id
             user_id = None
         else:
@@ -265,7 +265,7 @@ async def handle_document(message: Message):
 
     saved_count = 0
     for lesson in lessons:
-        if user.is_elder and user.group_id:
+        if user.role == "starosta" and user.group_id:
             subject_id = get_or_create_subject(lesson['subject'], group_id=user.group_id)
             group_id = user.group_id
             user_id = None
@@ -320,7 +320,7 @@ async def handle_photo(message: Message):
 
         saved_count = 0
         for lesson in lessons:
-            if user.is_elder and user.group_id:
+            if user.role == "starosta" and user.group_id:
                 subject_id = get_or_create_subject(lesson['subject'], group_id=user.group_id)
                 group_id = user.group_id
                 user_id = None

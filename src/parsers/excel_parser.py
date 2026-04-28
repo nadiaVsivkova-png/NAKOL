@@ -24,12 +24,16 @@ def parse_excel_schedule(file_path):
                 end_time = row[2].strftime("%H:%M")
             else:
                 end_time = str(row[2])[:5] if row[2] else ""
+            classroom = ""
+            if len(row) > 4 and row[4]:
+                classroom = str(row[4]).strip()
 
             lesson = {
-                "day": str(day).strip(),
+                "day": day,
                 "start_time": str(start_time).strip(),
                 "end_time": str(end_time).strip(),
-                "subject": str(subject).strip()
+                "subject": str(subject).strip(),
+                "classroom": classroom
             }
 
             lessons.append(lesson)

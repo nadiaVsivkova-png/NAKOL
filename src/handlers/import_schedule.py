@@ -17,7 +17,8 @@ router = Router()
 
 # ==================== FSM СОСТОЯНИЯ ДЛЯ ИМПОРТА РАСПИСАНИЯ ====================
 class ScheduleImportStates(StatesGroup):
-    waiting_for_photo = State()  # ожидаем фото для расписания
+    waiting_for_photo = State()
+    waiting_for_excel = State()
 
 
 # ==================== FSM СОСТОЯНИЯ ДЛЯ РУЧНОГО ВВОДА ====================
@@ -50,7 +51,8 @@ async def import_schedule(message: Message):
 
 # ==================== EXCEL ====================
 @router.message(F.text == "📊Загрузить Excel-файл(рекомендую)")
-async def handle_excel(message: Message):
+async def handle_excel(message: Message, state: FSMContext):
+    await state.set_state(ScheduleImportStates.waiting_for_excel)
     await message.answer("Ты выбрал Excel-файл. Скачай шаблон и заполни его: /template\n\n"
                          "После заполнения просто загрузи файл сюда.",
                          reply_markup=ReplyKeyboardRemove())
@@ -65,7 +67,8 @@ async def answer_download(message: Message):
         await message.answer_document(
             document=file,
             caption="📋 Шаблон расписания\n\n"
-                    "Заполните файл и отправьте его обратно."
+                    "Заполни файл и отправь его обратно. "
+                    "Не меняй название файла!"
         )
     else:
         await message.answer("❌ Шаблон не найден.")
@@ -74,7 +77,6 @@ async def answer_download(message: Message):
 # ==================== ФОТО (OCR) ====================
 @router.message(F.text == "📸Отправить фото(распознаю текст)")
 async def handle_photo_schedule(message: Message, state: FSMContext):
-    """Пользователь выбрал отправку фото"""
     await state.set_state(ScheduleImportStates.waiting_for_photo)
     await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.\n\n"
                          "❌ /cancel - отменить",
@@ -83,7 +85,6 @@ async def handle_photo_schedule(message: Message, state: FSMContext):
 
 @router.message(ScheduleImportStates.waiting_for_photo, F.photo)
 async def process_photo_schedule(message: Message, state: FSMContext):
-    """Обработка фото для расписания"""
     await message.answer("📸 Фото получено. Распознаю текст...")
 
     photo = message.photo[-1]
@@ -121,7 +122,6 @@ async def process_photo_schedule(message: Message, state: FSMContext):
             if subject_id is None:
                 continue
 
-            # СОХРАНЯЕМ В БД
             create_schedule(
                 group_id=group_id,
                 user_id=user_id,
@@ -133,7 +133,7 @@ async def process_photo_schedule(message: Message, state: FSMContext):
             )
             saved_count += 1
 
-        await message.answer(f"✅ **Расписание сохранено!**\n\n📊 Добавлено занятий: {saved_count}")
+        await message.answer(f"✅ Расписание сохранено!\n\n📊 Добавлено занятий: {saved_count}")
         await state.clear()
 
     except Exception as e:
@@ -151,8 +151,8 @@ async def start_manual_input(message: Message, state: FSMContext):
     await state.set_state(ScheduleManualStates.waiting_for_day)
 
     await message.answer(
-        "📝 **Пошаговый ввод расписания**\n\n"
-        "Введи **день недели** в формате:\n"
+        "📝 Пошаговый ввод расписания\n\n"
+        "Введи день недели в формате:\n"
         "• пн\n• вт\n• ср\n• чт\n• пт\n• сб\n• вс\n\n❌ /cancel - отменить",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -178,7 +178,7 @@ async def process_day(message: Message, state: FSMContext):
 
     await state.update_data(temp_day=day)
     await state.set_state(ScheduleManualStates.waiting_for_start_time)
-    await message.answer(f"✅ День: {day}\n\nТеперь введи **время начала** (например: 09:00):")
+    await message.answer(f"✅ День: {day}\n\nТеперь введи время начала (например: 09:00):")
 
 
 @router.message(ScheduleManualStates.waiting_for_start_time)
@@ -192,7 +192,7 @@ async def process_start_time(message: Message, state: FSMContext):
 
     await state.update_data(temp_start_time=start_time)
     await state.set_state(ScheduleManualStates.waiting_for_end_time)
-    await message.answer(f"✅ Время начала: {start_time}\n\nТеперь введи **время окончания** (например: 10:30):")
+    await message.answer(f"✅ Время начала: {start_time}\n\nТеперь введи время окончания (например: 10:30):")
 
 
 @router.message(ScheduleManualStates.waiting_for_end_time)
@@ -206,7 +206,7 @@ async def process_end_time(message: Message, state: FSMContext):
 
     await state.update_data(temp_end_time=end_time)
     await state.set_state(ScheduleManualStates.waiting_for_subject)
-    await message.answer(f"✅ Время окончания: {end_time}\n\nТеперь введи **название предметa**:")
+    await message.answer(f"✅ Время окончания: {end_time}\n\nТеперь введи название предмета:")
 
 
 @router.message(ScheduleManualStates.waiting_for_subject)
@@ -227,7 +227,7 @@ async def process_subject(message: Message, state: FSMContext):
         subject_id = get_or_create_subject(subject_name, user_id=user.id)
 
     if subject_id is None:
-        await message.answer(f"❌ Не удалось создать предмет «{subject_name}»")
+        await message.answer(f"❌ Не удалось создать предмет {subject_name}")
         return
 
     data = await state.get_data()
@@ -243,13 +243,13 @@ async def process_subject(message: Message, state: FSMContext):
     lessons.append(new_lesson)
     await state.update_data(lessons=lessons, temp_day=None, temp_start_time=None, temp_end_time=None)
 
-    await message.answer(f"✅ **Добавлено занятие №{len(lessons)}:**\n\n"
+    await message.answer(f"✅ Добавлено занятие №{len(lessons)}:\n\n"
                          f"   📅 День: {new_lesson['day']}\n"
                          f"   ⏰ Время: {new_lesson['start_time']} - {new_lesson['end_time']}\n"
                          f"   📚 Предмет: {subject_name}")
 
     await state.set_state(ScheduleManualStates.waiting_for_more)
-    await message.answer("❓ **Что дальше?**\n\n"
+    await message.answer("❓ Что дальше?\n\n"
                          "/edit_schedule - добавить ещё\n"
                          "/ready - сохранить\n"
                          "/cancel - отменить")
@@ -258,7 +258,7 @@ async def process_subject(message: Message, state: FSMContext):
 @router.message(ScheduleManualStates.waiting_for_more, Command("edit_schedule"))
 async def add_more(message: Message, state: FSMContext):
     await state.set_state(ScheduleManualStates.waiting_for_day)
-    await message.answer("Введи **день недели** для нового занятия:")
+    await message.answer("Введи день недели для нового занятия:")
 
 
 @router.message(ScheduleManualStates.waiting_for_more, Command("ready"))
@@ -295,7 +295,7 @@ async def finish_manual(message: Message, state: FSMContext):
         )
         saved_count += 1
 
-    await message.answer(f"✅ **Расписание сохранено!**\n\n📊 Добавлено занятий: {saved_count}")
+    await message.answer(f"✅ Расписание сохранено!\n\n📊 Добавлено занятий: {saved_count}")
     await state.clear()
 
 
@@ -306,10 +306,16 @@ async def cancel_manual(message: Message, state: FSMContext):
 
 
 # ==================== ОБРАБОТЧИК EXCEL ФАЙЛА ====================
-@router.message(F.document)
-async def handle_document(message: Message):
-    if not message.document.file_name.endswith('.xlsx'):
-        await message.answer("❌ Отправьте файл .xlsx")
+@router.message(ScheduleImportStates.waiting_for_excel, F.document)
+async def handle_document(message: Message, state: FSMContext):
+    if not (message.document.file_name.startswith("schedule") and message.document.file_name.endswith(".xlsx")):
+        await message.answer(
+            "❌ Неверный формат файла.\n\n"
+            "Файл должен:\n"
+            "• Начинаться с 'schedule'\n"
+            "• Иметь расширение .xlsx\n\n"
+            "Пример: schedule.xlsx"
+        )
         return
 
     file_info = await message.bot.get_file(message.document.file_id)
@@ -357,7 +363,7 @@ async def handle_document(message: Message):
         )
         saved_count += 1
 
-    await message.answer(f"✅ Расписание сохранено!**\n\n📊 Добавлено занятий: {saved_count}")
+    await message.answer(f"✅ Расписание сохранено!\n\n📊 Добавлено занятий: {saved_count}")
 
 
 # ==================== ОТМЕНА ====================

@@ -74,16 +74,16 @@ async def show_session_schedule(message: Message, state: FSMContext):
     # Получаем расписание в зависимости от роли пользователя
     if user.role == "starosta" and user.group_id:
         sessions = get_session_schedule(group_id=user.group_id)
-        schedule_type = "📚 **Расписание сессии для группы**"
+        schedule_type = "📚 Расписание сессии для группы"
     else:
         sessions = get_session_schedule(user_id=user.id)
-        schedule_type = "👤 **Моё расписание сессии**"
+        schedule_type = "👤 Моё расписание сессии"
 
     # Проверяем, есть ли расписание
     if not sessions:
         await message.answer(
             f"{schedule_type}\n\n"
-            "📭 **Расписание сессии не загружено.**\n\n"
+            "📭 Расписание сессии не загружено.\n\n"
             "Загрузите расписание через команду:\n"
             "/import_session"
         )
@@ -91,7 +91,7 @@ async def show_session_schedule(message: Message, state: FSMContext):
 
     # Формируем ответ
     response = f"{schedule_type}\n\n"
-    response += "📋 **Список экзаменов и занятий:**\n\n"
+    response += "📋 Список экзаменов и занятий:\n\n"
 
     current_date = None
 
@@ -104,7 +104,7 @@ async def show_session_schedule(message: Message, state: FSMContext):
         # Группировка по датам
         if date_display != current_date:
             current_date = date_display
-            response += f"📅 **{date_display}**\n"
+            response += f"📅 {date_display}\n"
 
         # Формируем строку времени
         time_str = data['start_time']

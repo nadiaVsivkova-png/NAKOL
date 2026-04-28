@@ -281,13 +281,13 @@ async def cancel_manual_input(message: Message, state: FSMContext):
 @router.message(Command("cancel"))
 async def cancel_all(message: Message, state: FSMContext):
     current_state = await state.get_state()
+    data = await state.get_data()
+    temp_path = data.get('temp_path')
 
     # Очищаем состояние
     await state.clear()
 
     # Если были временные файлы, удаляем их
-    data = await state.get_data()
-    temp_path = data.get('temp_path')
     if temp_path and os.path.exists(temp_path):
         os.remove(temp_path)
 
@@ -341,7 +341,7 @@ async def handle_document(message: Message, state: FSMContext):
         os.remove(temp_path)
 
 
-@router.message(Command("ready"))
+@router.message(SessionImportStates.waiting_for_confirmation, Command("ready"))
 async def confirm_schedule(message: Message, state: FSMContext):
     data = await state.get_data()
     sessions = data.get('sessions')

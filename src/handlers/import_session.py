@@ -49,7 +49,7 @@ async def handle_excel(message: Message):
 
 @router.message(Command("session"))
 async def answer_download(message: Message):
-    template_path = "templates/session_template.xlsx"
+    template_path = "../templates/session_template.xlsx"
 
     if os.path.exists(template_path):
         file = FSInputFile(template_path)

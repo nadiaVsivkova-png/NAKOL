@@ -15,6 +15,11 @@ from database.db import create_schedule
 router = Router()
 
 
+# ==================== FSM СОСТОЯНИЯ ДЛЯ ИМПОРТА РАСПИСАНИЯ ====================
+class ScheduleImportStates(StatesGroup):
+    waiting_for_photo = State()  # ожидаем фото для расписания
+
+
 # ==================== FSM СОСТОЯНИЯ ДЛЯ РУЧНОГО ВВОДА ====================
 class ScheduleManualStates(StatesGroup):
     waiting_for_day = State()
@@ -53,7 +58,7 @@ async def handle_excel(message: Message):
 
 @router.message(Command("template"))
 async def answer_download(message: Message):
-    template_path = "templates/schedule_template.xlsx"
+    template_path = "../templates/schedule_template.xlsx"
 
     if os.path.exists(template_path):
         file = FSInputFile(template_path)
@@ -68,9 +73,74 @@ async def answer_download(message: Message):
 
 # ==================== ФОТО (OCR) ====================
 @router.message(F.text == "📸Отправить фото(распознаю текст)")
-async def handle_photo_schedule(message: Message):
-    await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.",
+async def handle_photo_schedule(message: Message, state: FSMContext):
+    """Пользователь выбрал отправку фото"""
+    await state.set_state(ScheduleImportStates.waiting_for_photo)
+    await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.\n\n"
+                         "❌ /cancel - отменить",
                          reply_markup=ReplyKeyboardRemove())
+
+
+@router.message(ScheduleImportStates.waiting_for_photo, F.photo)
+async def process_photo_schedule(message: Message, state: FSMContext):
+    """Обработка фото для расписания"""
+    await message.answer("📸 Фото получено. Распознаю текст...")
+
+    photo = message.photo[-1]
+    file_info = await message.bot.get_file(photo.file_id)
+
+    temp_path = f"temp_photo_{message.message_id}.jpg"
+    await message.bot.download_file(file_info.file_path, temp_path)
+
+    try:
+        recognized_text = ocr_photo(temp_path)
+        if not recognized_text:
+            await message.answer("❌ Текст не распознан")
+            return
+
+        lessons = parse_schedule_from_photo(recognized_text)
+        if not lessons:
+            await message.answer("❌ Не удалось распознать расписание")
+            return
+
+        db = get_db()
+        user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+        close_db(db)
+
+        saved_count = 0
+        for lesson in lessons:
+            if user.role == "starosta" and user.group_id:
+                subject_id = get_or_create_subject(lesson['subject'], group_id=user.group_id)
+                group_id = user.group_id
+                user_id = None
+            else:
+                subject_id = get_or_create_subject(lesson['subject'], user_id=user.id)
+                group_id = None
+                user_id = user.id
+
+            if subject_id is None:
+                continue
+
+            # СОХРАНЯЕМ В БД
+            create_schedule(
+                group_id=group_id,
+                user_id=user_id,
+                subject_id=subject_id,
+                weekday=lesson['day'],
+                start_time=lesson['start_time'],
+                end_time=lesson['end_time'],
+                classroom=None
+            )
+            saved_count += 1
+
+        await message.answer(f"✅ **Расписание сохранено!**\n\n📊 Добавлено занятий: {saved_count}")
+        await state.clear()
+
+    except Exception as e:
+        await message.answer(f"❌ Ошибка: {e}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 # ==================== РУЧНОЙ ВВОД ====================
@@ -214,7 +284,6 @@ async def finish_manual(message: Message, state: FSMContext):
             group_id = None
             user_id = user.id
 
-        # СОХРАНЯЕМ В БД
         create_schedule(
             group_id=group_id,
             user_id=user_id,
@@ -277,7 +346,6 @@ async def handle_document(message: Message):
         if subject_id is None:
             continue
 
-        # СОХРАНЯЕМ В БД
         create_schedule(
             group_id=group_id,
             user_id=user_id,
@@ -289,68 +357,7 @@ async def handle_document(message: Message):
         )
         saved_count += 1
 
-    await message.answer(f"✅ **Расписание сохранено!**\n\n📊 Добавлено занятий: {saved_count}")
-
-
-# ==================== ОБРАБОТЧИК ФОТО ====================
-@router.message(F.photo)
-async def handle_photo(message: Message):
-    await message.answer("📸 Фото получено. Распознаю текст...")
-
-    photo = message.photo[-1]
-    file_info = await message.bot.get_file(photo.file_id)
-
-    temp_path = f"temp_photo_{message.message_id}.jpg"
-    await message.bot.download_file(file_info.file_path, temp_path)
-
-    try:
-        recognized_text = ocr_photo(temp_path)
-        if not recognized_text:
-            await message.answer("❌ Текст не распознан")
-            return
-
-        lessons = parse_schedule_from_photo(recognized_text)
-        if not lessons:
-            await message.answer("❌ Не удалось распознать расписание")
-            return
-
-        db = get_db()
-        user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-        close_db(db)
-
-        saved_count = 0
-        for lesson in lessons:
-            if user.role == "starosta" and user.group_id:
-                subject_id = get_or_create_subject(lesson['subject'], group_id=user.group_id)
-                group_id = user.group_id
-                user_id = None
-            else:
-                subject_id = get_or_create_subject(lesson['subject'], user_id=user.id)
-                group_id = None
-                user_id = user.id
-
-            if subject_id is None:
-                continue
-
-            # СОХРАНЯЕМ В БД
-            create_schedule(
-                group_id=group_id,
-                user_id=user_id,
-                subject_id=subject_id,
-                weekday=lesson['day'],
-                start_time=lesson['start_time'],
-                end_time=lesson['end_time'],
-                classroom=None
-            )
-            saved_count += 1
-
-        await message.answer(f"✅ **Расписание сохранено!**\n\n📊 Добавлено занятий: {saved_count}")
-
-    except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}")
-    finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+    await message.answer(f"✅ Расписание сохранено!**\n\n📊 Добавлено занятий: {saved_count}")
 
 
 # ==================== ОТМЕНА ====================

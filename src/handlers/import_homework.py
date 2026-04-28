@@ -75,7 +75,7 @@ async def handle_photo_method(message: Message, state: FSMContext):
 
 
 @router.message(HomeworkImportStates.waiting_for_photo, F.photo)
-async def process_photo(message: Message, state: FSMContext):
+async def handle_photo_homework(message: Message, state: FSMContext):
     """Получаем фото и сохраняем file_id"""
     photo = message.photo[-1]
     photo_file_id = photo.file_id
@@ -207,8 +207,8 @@ async def handle_manual_method(message: Message, state: FSMContext):
     await state.update_data(temp_photo_file_id=None)
     await state.set_state(HomeworkImportStates.waiting_for_manual_subject)
     await message.answer(
-        "✍️ **Ручной ввод задания**\n\n"
-        "Введи **название предмета**:\n\n"
+        "✍️ Ручной ввод задания\n\n"
+        "Введи название предмета:\n\n"
         "❌ /cancel - отменить",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -244,7 +244,7 @@ async def process_manual_subject(message: Message, state: FSMContext):
 
     await message.answer(
         f"✅ Предмет: {subject_name}\n\n"
-        "Теперь введи **текст задания** (что нужно сделать):\n\n"
+        "Теперь введи текст задания (что нужно сделать):\n\n"
         "❌ /cancel - отменить"
     )
 
@@ -263,7 +263,7 @@ async def process_task_text(message: Message, state: FSMContext):
 
     await message.answer(
         f"✅ Текст задания: {task_text[:100]}{'...' if len(task_text) > 100 else ''}\n\n"
-        "Теперь введи **дедлайн** в формате:\n"
+        "Теперь введи дедлайн в формате:\n"
         "• ДД.ММ.ГГГГ (например: 25.12.2026)\n"
         "• ДД.ММ.ГГ (например: 25.12.26)\n\n"
         "❌ /cancel - отменить"
@@ -316,7 +316,7 @@ async def process_manual_deadline(message: Message, state: FSMContext):
         temp_task_text=None
     )
 
-    response = f"✅ **Задание добавлено в список!**\n\n"
+    response = f"✅ Задание добавлено в список!\n\n"
     response += f"📚 Предмет: {temp_subject_name}\n"
     response += f"📝 Задание: {temp_task_text}\n"
     response += f"📅 Дедлайн: {deadline.strftime('%d.%m.%Y')}\n"
@@ -325,7 +325,7 @@ async def process_manual_deadline(message: Message, state: FSMContext):
 
     await state.set_state(HomeworkImportStates.waiting_for_next_action)
     await message.answer(
-        f"📊 **В списке сейчас {len(homeworks)} заданий.**\n\n"
+        f"📊 В списке сейчас {len(homeworks)} заданий.\n\n"
         "Что хочешь сделать?",
         reply_markup=get_next_action_keyboard()
     )
@@ -335,7 +335,7 @@ async def process_manual_deadline(message: Message, state: FSMContext):
 async def add_more_homework(callback, state: FSMContext):
     """Добавляем ещё одно задание - показываем выбор способа"""
     await callback.message.edit_text(
-        "📚 **Добавление нового задания**\n\n"
+        "📚 Добавление нового задания\n\n"
         "Выбери способ:",
         reply_markup=homework_keyboard
     )
@@ -381,7 +381,7 @@ async def finish_and_save(callback, state: FSMContext):
     close_db(db)
 
     if errors:
-        response = f"⚠️ **Сохранено частично:** {saved_count}/{len(homeworks)}\n\n"
+        response = f"⚠️ Сохранено частично: {saved_count}/{len(homeworks)}\n\n"
         response += f"Ошибки:\n" + "\n".join(errors[:5])
         await callback.message.edit_text(response)
         await state.clear()
@@ -394,7 +394,7 @@ async def finish_and_save(callback, state: FSMContext):
 
     # Просто выводим сообщение без кнопки
     await callback.message.edit_text(
-        f"✅ **{saved_count} заданий успешно сохранены!**\n\n"
+        f"✅ {saved_count} заданий успешно сохранены!\n\n"
         f"📊 Сохранено: {saved_count}\n\n"
         f"📢 Чтобы отправить задания в группу, напиши в чат команду:\n"
         f"`/send_to_group`\n\n"
@@ -434,7 +434,7 @@ async def send_single_task_to_group(task_id: int, group_telegram_id: int, bot: B
 
     # Текст сообщения
     message_text = (
-        f"📚 **Новое задание в группе!**\n\n"
+        f"📚 Новое задание в группе!\n\n"
         f"📖 Предмет: {subject_name}\n"
         f"📝 Задание: {task.title}\n"
         f"📅 Дедлайн: {deadline_str}\n"

@@ -1,7 +1,9 @@
 import asyncio
 import os
 from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
+
 from handlers.start import router as start_router
 from handlers.tasks import router as tasks_router
 from handlers.registration import router as registration_router
@@ -10,13 +12,20 @@ from handlers.individual import router as individual_router
 from handlers.import_schedule import router as import_schedule_router
 from handlers.import_homework import router as import_homework_router
 from handlers.urgent import router as urgent_router
+from handlers.import_session import router as import_session_router
+from handlers.session_schedule import router as session_schedule_router
+from handlers.remove_subject import router as remove_subject_router
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
+
+# подключаем роутеры
 dp.include_router(start_router)
 dp.include_router(tasks_router)
 dp.include_router(registration_router)
@@ -25,6 +34,9 @@ dp.include_router(individual_router)
 dp.include_router(import_schedule_router)
 dp.include_router(import_homework_router)
 dp.include_router(urgent_router)
+dp.include_router(import_session_router)
+dp.include_router(session_schedule_router)
+dp.include_router(remove_subject_router)
 
 async def main():
     await dp.start_polling(bot)

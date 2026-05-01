@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from database.db import get_db, close_db
-from database.models import User, Subject, Group, Task
+from database.models import User, Subject, Group, Task, GroupMember
 from database.group_functions import create_task, get_or_create_subject
 from datetime import datetime
 import asyncio
@@ -472,7 +472,7 @@ async def send_single_task_to_group(task_id: int, group_telegram_id: int, bot: B
 
 @router.message(Command("send_to_group"))
 async def send_to_group_command(message: Message, state: FSMContext):
-    """Отправляет задания в группу по команде"""
+    """Отправляет задания каждому участнику группы в личку"""
     data = await state.get_data()
     task_ids = data.get('saved_task_ids', [])
 
@@ -483,60 +483,92 @@ async def send_to_group_command(message: Message, state: FSMContext):
         )
         return
 
-    # Получаем пользователя и его группу
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
 
     if not user or not user.group_id:
-        await message.answer(
-            "❌ У тебя нет группы для отправки."
-        )
+        await message.answer("❌ У тебя нет группы.")
         close_db(db)
         return
 
     group_id = user.group_id
-    group = db.query(Group).filter(Group.id == group_id).first()
-    group_telegram_id = group.telegram_id if group else None
 
+    # Получаем всех участников группы
+    members = db.query(User).join(GroupMember).filter(GroupMember.group_id == group_id).all()
     close_db(db)
 
-    if not group_telegram_id:
-        await message.answer("❌ Группа не найдена")
+    if not members:
+        await message.answer("❌ В группе нет участников.")
         return
 
-    await message.answer(f"📤 Отправляю {len(task_ids)} заданий в группу...")
+    await message.answer(f"📤 Отправляю {len(task_ids)} заданий {len(members)} участникам группы...")
 
     sent_count = 0
+    failed_count = 0
+
     for task_id in task_ids:
-        success = await send_single_task_to_group(task_id, group_telegram_id, message.bot)
-        if success:
-            sent_count += 1
-        await asyncio.sleep(0.5)
+        # Получаем задание
+        db = get_db()
+        task = db.query(Task).filter(Task.id == task_id).first()
+        subject = db.query(Subject).filter(Subject.id == task.subject_id).first()
+        subject_name = subject.name if subject else "Неизвестный предмет"
+        close_db(db)
+
+        deadline_str = task.deadline.strftime("%d.%m.%Y")
+        task_text = task.title
+
+        # Текст сообщения
+        message_text = (
+            f"📚 Новое задание!\n\n"
+            f"📖 Предмет: {subject_name}\n"
+            f"📝 Задание: {task_text}\n"
+            f"📅 Дедлайн: {deadline_str}\n"
+        )
+
+        # СОЗДАЁМ КЛАВИАТУРУ С КНОПКОЙ "ПОКАЗАТЬ ФОТО" (если есть фото)
+        keyboard = None
+        if task.photo_file_id:
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(
+                    text="📸 Показать фото",
+                    callback_data=f"show_photo:{task.id}"
+                )]
+            ])
+
+        # Отправляем каждому участнику
+        for member in members:
+            try:
+                if task.photo_file_id:
+                    # Если есть фото — отправляем фото + текст + кнопка
+                    await message.bot.send_photo(
+                        chat_id=member.telegram_id,
+                        photo=task.photo_file_id,
+                        caption=message_text,
+                        reply_markup=keyboard,
+                        parse_mode="Markdown"
+                    )
+                else:
+                    # Если фото нет — только текст + кнопка
+                    await message.bot.send_message(
+                        chat_id=member.telegram_id,
+                        text=message_text,
+                        reply_markup=keyboard,
+                        parse_mode="Markdown"
+                    )
+                sent_count += 1
+            except Exception as e:
+                failed_count += 1
+                print(f"Ошибка отправки участнику {member.telegram_id}: {e}")
+
+        await asyncio.sleep(0.5)  # задержка между заданиями
 
     await message.answer(
-        f"✅ Отправлено в группу: {sent_count}/{len(task_ids)}\n\n"
-        f"Студенты группы получили уведомления."
+        f"✅ Отправлено!\n\n"
+        f"📊 Заданий: {len(task_ids)}\n"
+        f"👥 Участников: {len(members)}\n"
+        f"📬 Успешно: {sent_count}\n"
+        f"❌ Ошибок: {failed_count}"
     )
 
     # Очищаем ID заданий после отправки
     await state.update_data(saved_task_ids=[])
-
-
-@router.callback_query(F.data.startswith("show_photo:"))
-async def show_photo(callback: CallbackQuery):
-    """Отправляет фото задания при нажатии на кнопку"""
-    task_id = int(callback.data.split(":")[1])
-
-    db = get_db()
-    task = db.query(Task).filter(Task.id == task_id).first()
-    close_db(db)
-
-    if not task or not task.photo_file_id:
-        await callback.answer("❌ Фото не найдено", show_alert=True)
-        return
-
-    await callback.message.answer_photo(
-        photo=task.photo_file_id,
-        caption=f"📸 Фото к заданию «{task.title}»"
-    )
-    await callback.answer()

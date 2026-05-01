@@ -284,7 +284,7 @@ async def process_classroom(message: Message, state: FSMContext):
         'date': temp_date,
         'start_time': temp_start_time,
         'end_time': temp_end_time,
-        'subject_name': temp_subject_name,
+        'subject': temp_subject_name,
         'classroom': classroom
     }
 
@@ -348,7 +348,7 @@ async def finish_manual_input(message: Message, state: FSMContext):
         response += f"   ⏰ {session['start_time']}"
         if session.get('end_time'):
             response += f" - {session['end_time']}"
-        response += f"\n   📚 Предмет: {session['subject_name']}\n"
+        response += f"\n   📚 Предмет: {session['subject']}\n"
         if session.get('classroom'):
             response += f"   🏛 Аудитория: {session['classroom']}\n"
         response += "\n"

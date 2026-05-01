@@ -56,7 +56,7 @@ async def import_homework(message: Message, state: FSMContext):
     await state.clear()
     await state.update_data(homeworks=[])
     await message.answer(
-        "📚 **Импорт домашнего задания**\n\n"
+        "📚 Импорт домашнего задания\n\n"
         "Выбери способ:",
         reply_markup=homework_keyboard
     )
@@ -85,7 +85,7 @@ async def handle_photo_homework(message: Message, state: FSMContext):
 
     await message.answer(
         "✅ Фото получено и сохранено!\n\n"
-        "Теперь введи **название предмета**:\n\n"
+        "Теперь введи название предмета:\n\n"
         "❌ /cancel - отменить"
     )
 
@@ -94,7 +94,7 @@ async def handle_photo_homework(message: Message, state: FSMContext):
 async def invalid_photo(message: Message):
     """Если отправили не фото"""
     await message.answer(
-        "❌ Пожалуйста, отправь **фото**.\n\n"
+        "❌ Пожалуйста, отправь фото.\n\n"
         "Или используй /cancel для отмены."
     )
 
@@ -129,7 +129,7 @@ async def process_photo_subject(message: Message, state: FSMContext):
 
     await message.answer(
         f"✅ Предмет: {subject_name}\n\n"
-        "Теперь введи **дедлайн** в формате:\n"
+        "Теперь введи дедлайн в формате:\n"
         "• ДД.ММ.ГГГГ (например: 25.12.2026)\n"
         "• ДД.ММ.ГГ (например: 25.12.26)\n\n"
         "❌ /cancel - отменить"
@@ -186,7 +186,7 @@ async def process_photo_deadline(message: Message, state: FSMContext):
     )
 
     # Показываем предпросмотр с фото
-    response = f"✅ **Задание добавлено в список!**\n\n"
+    response = f"✅ Задание добавлено в список!\n\n"
     response += f"📚 Предмет: {temp_subject_name}\n"
     response += f"📅 Дедлайн: {deadline.strftime('%d.%m.%Y')}\n"
     response += f"📸 Фото: прикреплено (условие задачи)\n"
@@ -195,7 +195,7 @@ async def process_photo_deadline(message: Message, state: FSMContext):
 
     await state.set_state(HomeworkImportStates.waiting_for_next_action)
     await message.answer(
-        f"📊 **В списке сейчас {len(homeworks)} заданий.**\n\n"
+        f"📊 В списке сейчас {len(homeworks)} заданий.\n\n"
         "Что хочешь сделать?",
         reply_markup=get_next_action_keyboard()
     )
@@ -514,7 +514,7 @@ async def send_to_group_command(message: Message, state: FSMContext):
         await asyncio.sleep(0.5)
 
     await message.answer(
-        f"✅ **Отправлено в группу:** {sent_count}/{len(task_ids)}\n\n"
+        f"✅ Отправлено в группу: {sent_count}/{len(task_ids)}\n\n"
         f"Студенты группы получили уведомления."
     )
 

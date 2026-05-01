@@ -2,13 +2,14 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from aiogram import Bot, Router
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from database.db import get_db, close_db
-from database.models import User, Task, Subject, GroupMember, NotificationLog
-from database.reminder_functions import was_notification_sent, log_notification
+from database.models import User, Task, Subject, GroupMember
+from database.reminder_functions import was_notification_sent, log_notification, get_reminder_settings, \
+    set_reminder_settings
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -19,23 +20,23 @@ router = Router()
 async def send_reminder_to_user(bot: Bot, user_telegram_id: int, task: Task, subject_name: str, notif_type: str):
     """
     Отправляет напоминание одному пользователю.
-    '24h' или '3h'
+    notif_type: '24h', '3h' или 'custom_Xh'
     """
-    # Форматируем дедлайн
     deadline_str = task.deadline.strftime("%d.%m.%Y %H:%M")
-
-    # Определяем время до дедлайна
     time_left = task.deadline - datetime.now()
+
     if notif_type == "24h":
         time_text = "24 часа"
-    else:
+    elif notif_type == "3h":
         hours_left = int(time_left.total_seconds() // 3600)
         if hours_left < 1:
             time_text = "менее часа"
         else:
             time_text = f"{hours_left} часа"
+    elif notif_type.startswith("custom_"):
+        hours = int(notif_type.replace("custom_", "").replace("h", ""))
+        time_text = f"{hours} часов"
 
-    # Текст напоминания
     message_text = (
         f"⏰ Напоминание о дедлайне!\n\n"
         f"📚 Предмет: {subject_name}\n"
@@ -47,7 +48,6 @@ async def send_reminder_to_user(bot: Bot, user_telegram_id: int, task: Task, sub
 
     try:
         if task.photo_file_id:
-            # Отправляем фото с подписью
             await bot.send_photo(
                 chat_id=user_telegram_id,
                 photo=task.photo_file_id,
@@ -55,7 +55,6 @@ async def send_reminder_to_user(bot: Bot, user_telegram_id: int, task: Task, sub
                 parse_mode="Markdown"
             )
         else:
-            # Отправляем только текст
             await bot.send_message(
                 chat_id=user_telegram_id,
                 text=message_text,
@@ -71,19 +70,14 @@ async def send_reminder_to_user(bot: Bot, user_telegram_id: int, task: Task, sub
 # ==================== ОСНОВНАЯ ФУНКЦИЯ ПРОВЕРКИ ДЕДЛАЙНОВ ====================
 
 async def check_and_send_reminders(bot: Bot):
-    """
-    Проверяет дедлайны и отправляет напоминания.
-    Запускается каждые 30 минут.
-    """
     logger.info("Проверка дедлайнов...")
 
     db = get_db()
     now = datetime.now()
 
-    # Задания, у которых дедлайн в ближайшие 25 часов (чтобы не пропустить 24ч)
     upcoming_tasks = db.query(Task).filter(
         Task.deadline > now,
-        Task.deadline <= now + timedelta(hours=25)
+        Task.deadline <= now + timedelta(hours=73)
     ).all()
 
     if not upcoming_tasks:
@@ -95,52 +89,55 @@ async def check_and_send_reminders(bot: Bot):
     error_count = 0
 
     for task in upcoming_tasks:
-        # Получаем предмет
         subject = db.query(Subject).filter(Subject.id == task.subject_id).first()
         subject_name = subject.name if subject else "Неизвестный предмет"
 
-        # Определяем, кому отправлять уведомление
         user_ids = []
 
         if task.group_id:
-            # Групповое задание — отправляем всем участникам группы
             members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
             user_ids = [m.user_id for m in members]
         else:
-            # Индивидуальное задание — только создателю
             user_ids = [task.created_by]
 
         if not user_ids:
             continue
 
-        # Для каждого пользователя проверяем и отправляем
         for user_id in user_ids:
-            # Проверяем, нужно ли отправлять уведомление (24h или 3h)
-            time_left = task.deadline - now
-
-            # Определяем тип уведомления
-            notification_type = None
-            if timedelta(hours=23) <= time_left <= timedelta(hours=25):
-                notification_type = "24h"
-            elif timedelta(hours=2, minutes=30) <= time_left <= timedelta(hours=3, minutes=30):
-                notification_type = "3h"
-            else:
-                continue  # не подходит ни под один интервал
-
-            # Проверяем, не отправляли ли уже такое уведомление
-            if was_notification_sent(user_id, task.id, notification_type):
-                continue
-
-            # Получаем telegram_id пользователя
             user = db.query(User).filter(User.id == user_id).first()
             if not user or not user.telegram_id:
                 continue
 
-            # Отправляем уведомление
+            settings = get_reminder_settings(user_id)
+            if not settings:
+                continue
+
+            time_left = task.deadline - now
+            notification_type = None
+
+            # Автоматические уведомления (24ч)
+            if timedelta(hours=23) <= time_left <= timedelta(hours=25):
+                notification_type = "24h"
+            # Автоматические уведомления (3ч)
+            elif timedelta(hours=2, minutes=30) <= time_left <= timedelta(hours=3, minutes=30):
+                notification_type = "3h"
+            else:
+                # ПЕРСОНАЛЬНЫЕ НАПОМИНАНИЯ (custom_times)
+                custom_times = getattr(settings, 'custom_times', []) or []
+                for hours in custom_times:
+                    if isinstance(hours, int) and timedelta(hours=hours - 1) <= time_left <= timedelta(hours=hours + 1):
+                        notification_type = f"custom_{hours}h"
+                        break
+
+            if not notification_type:
+                continue
+
+            if was_notification_sent(user_id, task.id, notification_type):
+                continue
+
             success = await send_reminder_to_user(bot, user.telegram_id, task, subject_name, notification_type)
 
             if success:
-                # Логируем отправку
                 log_notification(user_id, task.id, notification_type)
                 sent_count += 1
             else:
@@ -153,98 +150,169 @@ async def check_and_send_reminders(bot: Bot):
 # ==================== ПЛАНИРОВЩИК ====================
 
 async def start_reminder_scheduler(bot: Bot):
-    """
-    Запускает фоновую задачу для регулярной проверки дедлайнов.
-    Запускается при старте бота.
-    """
     logger.info("Планировщик напоминаний запущен (проверка каждые 30 минут)")
     while True:
         try:
             await check_and_send_reminders(bot)
         except Exception as e:
             logger.error(f"Ошибка в планировщике: {e}")
-        await asyncio.sleep(1800)  # 30 минут
+        await asyncio.sleep(1800)
 
 
 # ==================== КОМАНДА ДЛЯ ПРОСМОТРА НАСТРОЕК ====================
 
 @router.message(Command("reminder_settings"))
-async def show_reminder_settings(message: Message, state: FSMContext):
-    """Показывает текущие настройки напоминаний пользователя"""
-    from database.reminder_functions import get_reminder_settings
-
+async def show_reminder_settings(message: Message):
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
     close_db(db)
 
     settings = get_reminder_settings(user.id)
 
-    if not settings:
-        await message.answer("❌ Не удалось получить настройки")
-        return
+    # ИСПОЛЬЗУЕМ custom_times
+    custom_times = getattr(settings, 'custom_times', []) or []
 
-    mode_text = {
-        "auto": "Автоматический (за 24ч и за 3ч)",
-        "custom": "Пользовательский",
-        "off": "Выключены"
-    }.get(settings.mode, settings.mode)
+    response = "⚙️ Настройки напоминаний\n\n"
+    response += "📌 Автоматические уведомления:\n"
+    response += f"   • За 24 часа: ✅\n"
+    response += f"   • За 3 часа: ✅\n"
+    response += "\n👤 Персональные напоминания:\n"
 
-    response = f"⚙️ Настройки напоминаний\n\n"
-    response += f"Режим: {mode_text}\n"
-    if settings.mode == "auto":
-        response += f"⏰ Напоминание за 3 часа: {'Включено' if settings.reminder_3h_enabled else 'Выключено'}\n"
-    elif settings.mode == "custom" and settings.custom_times:
-        times = ", ".join(settings.custom_times)
-        response += f"🕐 Пользовательское время: {times}\n"
+    if custom_times:
+        for h in custom_times:
+            hours_text = "часов" if h % 10 in [0, 5, 6, 7, 8, 9] or (h % 100 in [11, 12, 13, 14]) else (
+                "час" if h == 1 else "часа")
+            response += f"   • За {h} {hours_text}\n"
+    else:
+        response += "   📭 Нет персональных напоминаний\n"
 
     await message.answer(response, parse_mode="Markdown")
 
 
-# ==================== КОМАНДА ДЛЯ ИЗМЕНЕНИЯ НАСТРОЕК ====================
+# ==================== УПРАВЛЕНИЕ ПЕРСОНАЛЬНЫМИ НАПОМИНАНИЯМИ ====================
 
-@router.message(Command("set_reminder_off"))
-async def set_reminder_off(message: Message, state: FSMContext):
-    """Отключает напоминания"""
-    from database.reminder_functions import set_reminder_settings
+@router.message(Command("add_reminder"))
+async def add_personal_reminder(message: Message):
+    args = message.text.split()
+    if len(args) != 2:
+        await message.answer(
+            "❌ Укажите количество часов.\n\n"
+            "Пример: /add_reminder 6\n"
+            "Доступные значения: 1, 2, 3, 4, 5, 6, 8, 10, 12, 24, 48, 72"
+        )
+        return
 
-    db = get_db()
-    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-    close_db(db)
-
-    result = set_reminder_settings(user.id, mode="off")
-    if result:
-        await message.answer("✅ Напоминания отключены!")
-    else:
-        await message.answer("❌ Ошибка при отключении напоминаний")
-
-
-@router.message(Command("set_reminder_auto"))
-async def set_reminder_auto(message: Message, state: FSMContext):
-    """Включает автоматические напоминания (за 24ч и за 3ч)"""
-    from database.reminder_functions import set_reminder_settings
-
-    db = get_db()
-    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-    close_db(db)
-
-    result = set_reminder_settings(user.id, mode="auto", reminder_3h_enabled=True)
-    if result:
-        await message.answer("✅ Включены автоматические напоминания (за 24ч и за 3ч до дедлайна)")
-    else:
-        await message.answer("❌ Ошибка при включении напоминаний")
-
-
-@router.message(Command("set_reminder_3h_off"))
-async def set_reminder_3h_off(message: Message, state: FSMContext):
-    """Отключает напоминание за 3 часа (оставляет только за 24ч)"""
-    from database.reminder_functions import set_reminder_settings, get_reminder_settings
+    try:
+        hours = int(args[1])
+        if hours not in [1, 2, 3, 4, 5, 6, 8, 10, 12, 24, 48, 72]:
+            await message.answer("❌ Недопустимое количество часов. Выбери: 1, 2, 3, 4, 5, 6, 8, 10, 12, 24, 48, 72")
+            return
+    except ValueError:
+        await message.answer("❌ Введите число")
+        return
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
     close_db(db)
 
-    result = set_reminder_settings(user.id, mode="auto", reminder_3h_enabled=False)
+    settings = get_reminder_settings(user.id)
+    # ИСПОЛЬЗУЕМ custom_times
+    custom_times = getattr(settings, 'custom_times', []) or []
+
+    if hours in custom_times:
+        await message.answer(f"⚠️ Напоминание за {hours} часов уже добавлено")
+        return
+
+    custom_times.append(hours)
+    custom_times.sort()
+
+    result = set_reminder_settings(user.id, mode="auto", custom_times=custom_times)
+
     if result:
-        await message.answer("✅ Напоминание за 3 часа отключено. Осталось только за 24 часа")
+        hours_text = "часов" if hours % 10 in [0, 5, 6, 7, 8, 9] or (hours % 100 in [11, 12, 13, 14]) else (
+            "час" if hours == 1 else "часа")
+        await message.answer(f"✅ Добавлено напоминание за {hours} {hours_text} до дедлайна")
+        await show_reminder_settings(message)
     else:
-        await message.answer("❌ Ошибка при изменении настроек")
+        await message.answer("❌ Ошибка при добавлении напоминания")
+
+
+@router.message(Command("remove_reminder"))
+async def remove_personal_reminder(message: Message):
+    args = message.text.split()
+    if len(args) != 2:
+        await message.answer("❌ Укажите количество часов.\n\nПример: /remove_reminder 6")
+        return
+
+    try:
+        hours = int(args[1])
+    except ValueError:
+        await message.answer("❌ Введите число")
+        return
+
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    settings = get_reminder_settings(user.id)
+    # ИСПОЛЬЗУЕМ custom_times
+    custom_times = getattr(settings, 'custom_times', []) or []
+
+    if hours not in custom_times:
+        await message.answer(f"⚠️ Напоминание за {hours} часов не найдено")
+        return
+
+    custom_times.remove(hours)
+    result = set_reminder_settings(user.id, mode="auto", custom_times=custom_times)
+
+    if result:
+        await message.answer(f"✅ Удалено напоминание за {hours} часов")
+        await show_reminder_settings(message)
+    else:
+        await message.answer("❌ Ошибка при удалении напоминания")
+
+
+@router.message(Command("reminder_list"))
+async def list_personal_reminders(message: Message):
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    settings = get_reminder_settings(user.id)
+    #  ИСПОЛЬЗУЕМ custom_times
+    custom_times = getattr(settings, 'custom_times', []) or []
+
+    if not custom_times:
+        await message.answer("📭 У вас нет персональных напоминаний.\n\nДобавьте через /add_reminder")
+        return
+
+    response = "⏰ Ваши персональные напоминания:\n\n"
+    for h in custom_times:
+        hours_text = "часов" if h % 10 in [0, 5, 6, 7, 8, 9] or (h % 100 in [11, 12, 13, 14]) else (
+            "час" if h == 1 else "часа")
+        response += f"• За {h} {hours_text} до дедлайна\n"
+
+    response += "\nУдалить: /remove_reminder <часы>"
+    await message.answer(response)
+
+
+# ==================== КОМАНДА ДЛЯ ОТКЛЮЧЕНИЯ ВСЕХ НАПОМИНАНИЙ ====================
+
+@router.message(Command("reminders_off"))
+async def reminders_off(message: Message):
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    result = set_reminder_settings(user.id, mode="off", custom_times=[])
+    await message.answer("✅ Все напоминания отключены" if result else "❌ Ошибка")
+
+
+@router.message(Command("reminders_on"))
+async def reminders_on(message: Message):
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    result = set_reminder_settings(user.id, mode="auto")
+    await message.answer("✅ Включены напоминания по умолчанию (за 24ч и за 3ч)" if result else "❌ Ошибка")

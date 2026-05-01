@@ -473,12 +473,18 @@ async def confirm_schedule(message: Message, state: FSMContext):
             errors.append(f"Предмет '{session['subject']}' не удалось создать/найти")
             continue
 
+        date_value = session.get('day') or session.get('date')
+
+        if date_value is None:
+            errors.append(f"Отсутствует дата для предмета {session['subject']}")
+            continue
+
         try:
             create_session_schedule(
                 group_id=group_id,
                 user_id=user_id,
                 subject_id=subject_id,
-                date=session.get('day'),
+                date=date_value,
                 start_time=session['start_time'],
                 end_time=session.get('end_time', ""),
                 classroom=session.get('classroom', "")

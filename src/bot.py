@@ -44,13 +44,26 @@ dp.include_router(reminders_router)
 
 
 async def main():
+    # Запускаем планировщик напоминаний (каждые 30 минут)
     asyncio.create_task(start_reminder_scheduler(bot))
+
+    # Запускаем APScheduler для очистки БД
     scheduler = AsyncIOScheduler()
     scheduler.add_job(delete_old_tasks, trigger="cron", hour=3, minute=0)
     scheduler.add_job(delete_old_schedules, trigger="cron", hour=3, minute=0)
     scheduler.start()
-    await dp.start_polling(bot)
+    logger.info("Планировщик очистки БД запущен (ежедневно в 3:00)")
+
+    try:
+        await dp.start_polling(bot)
+    finally:
+        # Graceful shutdown — останавливаем планировщик при выключении бота
+        scheduler.shutdown()
+        logger.info("Планировщик очистки БД остановлен")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Бот выключен")

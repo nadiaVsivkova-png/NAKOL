@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 logging.basicConfig(level=logging.INFO)
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
@@ -18,6 +19,9 @@ from handlers.import_schedule import router as schedule_router
 from handlers.import_homework import router as homework_router
 from handlers.session_schedule import router as seschedule_router
 from handlers.remove_subject import router as remove_router
+from handlers.schedule import router as viewschedule_router
+from handlers.reminders import router as reminders_router
+from handlers.reminders import start_reminder_scheduler
 
 load_dotenv()
 
@@ -35,13 +39,28 @@ dp.include_router(homework_router)
 dp.include_router(session_router)
 dp.include_router(seschedule_router)
 dp.include_router(remove_router)
+dp.include_router(viewschedule_router)
+dp.include_router(reminders_router)
+
 
 async def main():
+    # Запускаем планировщик напоминаний (каждые 30 минут)
+    asyncio.create_task(start_reminder_scheduler(bot))
+
+    # Запускаем APScheduler для очистки БД
     scheduler = AsyncIOScheduler()
     scheduler.add_job(delete_old_tasks, trigger="cron", hour=3, minute=0)
     scheduler.add_job(delete_old_schedules, trigger="cron", hour=3, minute=0)
     scheduler.start()
-    await dp.start_polling(bot)
+    logger.info("Планировщик очистки БД запущен (ежедневно в 3:00)")
+
+    try:
+        await dp.start_polling(bot)
+    finally:
+        # Graceful shutdown — останавливаем планировщик при выключении бота
+        scheduler.shutdown()
+        logger.info("Планировщик очистки БД остановлен")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,9 +1,16 @@
 import asyncio
+import logging
 import os
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from utils.cleanup_job import delete_old_tasks, delete_old_schedules
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# мои роутеры
 from handlers.start import router as start_router
 from handlers.tasks import router as tasks_router
 from handlers.registration import router as registration_router
@@ -12,9 +19,12 @@ from handlers.individual import router as individual_router
 from handlers.import_schedule import router as import_schedule_router
 from handlers.import_homework import router as import_homework_router
 from handlers.urgent import router as urgent_router
+
+# алисины роутеры
 from handlers.import_session import router as import_session_router
 from handlers.session_schedule import router as session_schedule_router
 from handlers.remove_subject import router as remove_subject_router
+from handlers.reminders import router as reminders_router
 
 load_dotenv()
 
@@ -25,7 +35,7 @@ bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# подключаем роутеры
+# подключение роутеров
 dp.include_router(start_router)
 dp.include_router(tasks_router)
 dp.include_router(registration_router)
@@ -37,9 +47,26 @@ dp.include_router(urgent_router)
 dp.include_router(import_session_router)
 dp.include_router(session_schedule_router)
 dp.include_router(remove_subject_router)
+dp.include_router(reminders_router)
+
 
 async def main():
-    await dp.start_polling(bot)
+    # запуск планировщика очистки БД
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(delete_old_tasks, trigger="cron", hour=3, minute=0)
+    scheduler.add_job(delete_old_schedules, trigger="cron", hour=3, minute=0)
+    scheduler.start()
+    logger.info("Планировщик очистки БД запущен (ежедневно в 3:00)")
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        await dp.start_polling(bot)
+    finally:
+        scheduler.shutdown()
+        logger.info("Планировщик очистки БД остановлен")
+
+
+if name == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Бот выключен")

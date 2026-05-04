@@ -6,8 +6,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from database.db import get_db, close_db
-from database.models import User, Subject, Group, Task
-from database.group_functions import create_task
+from database.models import User, Subject, Group, Task, GroupMember
+from database.group_functions import create_task, get_or_create_subject
 from datetime import datetime
 import asyncio
 
@@ -56,7 +56,7 @@ async def import_homework(message: Message, state: FSMContext):
     await state.clear()
     await state.update_data(homeworks=[])
     await message.answer(
-        "📚 **Импорт домашнего задания**\n\n"
+        "📚 Импорт домашнего задания\n\n"
         "Выбери способ:",
         reply_markup=homework_keyboard
     )
@@ -75,7 +75,7 @@ async def handle_photo_method(message: Message, state: FSMContext):
 
 
 @router.message(HomeworkImportStates.waiting_for_photo, F.photo)
-async def process_photo(message: Message, state: FSMContext):
+async def handle_photo_homework(message: Message, state: FSMContext):
     """Получаем фото и сохраняем file_id"""
     photo = message.photo[-1]
     photo_file_id = photo.file_id
@@ -85,7 +85,7 @@ async def process_photo(message: Message, state: FSMContext):
 
     await message.answer(
         "✅ Фото получено и сохранено!\n\n"
-        "Теперь введи **название предмета**:\n\n"
+        "Теперь введи название предмета:\n\n"
         "❌ /cancel - отменить"
     )
 
@@ -94,7 +94,7 @@ async def process_photo(message: Message, state: FSMContext):
 async def invalid_photo(message: Message):
     """Если отправили не фото"""
     await message.answer(
-        "❌ Пожалуйста, отправь **фото**.\n\n"
+        "❌ Пожалуйста, отправь фото.\n\n"
         "Или используй /cancel для отмены."
     )
 
@@ -110,28 +110,26 @@ async def process_photo_subject(message: Message, state: FSMContext):
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-
-    subject = db.query(Subject).filter(
-        Subject.name == subject_name,
-        Subject.user_id == user.id
-    ).first()
-
-    if not subject:
-        await message.answer(
-            f"❌ Предмет «{subject_name}» не найден.\n\n"
-            f"Введи другое название:"
-        )
-        close_db(db)
-        return
-
     close_db(db)
 
-    await state.update_data(temp_subject_id=subject.id, temp_subject_name=subject.name)
+    if user.role == "starosta" and user.group_id:
+        subject_id = get_or_create_subject(subject_name, group_id=user.group_id)
+    else:
+        subject_id = get_or_create_subject(subject_name, user_id=user.id)
+
+    if subject_id is None:
+        await message.answer(
+            f"❌ Не удалось создать или найти предмет «{subject_name}».\n\n"
+            f"Попробуй другое название:"
+        )
+        return
+
+    await state.update_data(temp_subject_id=subject_id, temp_subject_name=subject_name)
     await state.set_state(HomeworkImportStates.waiting_for_photo_deadline)
 
     await message.answer(
-        f"✅ Предмет: {subject.name}\n\n"
-        "Теперь введи **дедлайн** в формате:\n"
+        f"✅ Предмет: {subject_name}\n\n"
+        "Теперь введи дедлайн в формате:\n"
         "• ДД.ММ.ГГГГ (например: 25.12.2026)\n"
         "• ДД.ММ.ГГ (например: 25.12.26)\n\n"
         "❌ /cancel - отменить"
@@ -188,7 +186,7 @@ async def process_photo_deadline(message: Message, state: FSMContext):
     )
 
     # Показываем предпросмотр с фото
-    response = f"✅ **Задание добавлено в список!**\n\n"
+    response = f"✅ Задание добавлено в список!\n\n"
     response += f"📚 Предмет: {temp_subject_name}\n"
     response += f"📅 Дедлайн: {deadline.strftime('%d.%m.%Y')}\n"
     response += f"📸 Фото: прикреплено (условие задачи)\n"
@@ -197,7 +195,7 @@ async def process_photo_deadline(message: Message, state: FSMContext):
 
     await state.set_state(HomeworkImportStates.waiting_for_next_action)
     await message.answer(
-        f"📊 **В списке сейчас {len(homeworks)} заданий.**\n\n"
+        f"📊 В списке сейчас {len(homeworks)} заданий.\n\n"
         "Что хочешь сделать?",
         reply_markup=get_next_action_keyboard()
     )
@@ -209,8 +207,8 @@ async def handle_manual_method(message: Message, state: FSMContext):
     await state.update_data(temp_photo_file_id=None)
     await state.set_state(HomeworkImportStates.waiting_for_manual_subject)
     await message.answer(
-        "✍️ **Ручной ввод задания**\n\n"
-        "Введи **название предмета**:\n\n"
+        "✍️ Ручной ввод задания\n\n"
+        "Введи название предмета:\n\n"
         "❌ /cancel - отменить",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -227,34 +225,26 @@ async def process_manual_subject(message: Message, state: FSMContext):
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-
-    if not user:
-        await message.answer("❌ Ты не зарегистрирован. Используй /start")
-        close_db(db)
-        await state.clear()
-        return
-
-    subject = db.query(Subject).filter(
-        Subject.name == subject_name,
-        Subject.user_id == user.id
-    ).first()
-
-    if not subject:
-        await message.answer(
-            f"❌ Предмет «{subject_name}» не найден.\n\n"
-            f"Введи другое название:"
-        )
-        close_db(db)
-        return
-
     close_db(db)
 
-    await state.update_data(temp_subject_id=subject.id, temp_subject_name=subject.name)
+    if user.role == "starosta" and user.group_id:
+        subject_id = get_or_create_subject(subject_name, group_id=user.group_id)
+    else:
+        subject_id = get_or_create_subject(subject_name, user_id=user.id)
+
+    if subject_id is None:
+        await message.answer(
+            f"❌ Не удалось создать или найти предмет «{subject_name}».\n\n"
+            f"Попробуй другое название:"
+        )
+        return
+
+    await state.update_data(temp_subject_id=subject_id, temp_subject_name=subject_name)
     await state.set_state(HomeworkImportStates.waiting_for_task_text)
 
     await message.answer(
-        f"✅ Предмет: {subject.name}\n\n"
-        "Теперь введи **текст задания** (что нужно сделать):\n\n"
+        f"✅ Предмет: {subject_name}\n\n"
+        "Теперь введи текст задания (что нужно сделать):\n\n"
         "❌ /cancel - отменить"
     )
 
@@ -273,7 +263,7 @@ async def process_task_text(message: Message, state: FSMContext):
 
     await message.answer(
         f"✅ Текст задания: {task_text[:100]}{'...' if len(task_text) > 100 else ''}\n\n"
-        "Теперь введи **дедлайн** в формате:\n"
+        "Теперь введи дедлайн в формате:\n"
         "• ДД.ММ.ГГГГ (например: 25.12.2026)\n"
         "• ДД.ММ.ГГ (например: 25.12.26)\n\n"
         "❌ /cancel - отменить"
@@ -326,7 +316,7 @@ async def process_manual_deadline(message: Message, state: FSMContext):
         temp_task_text=None
     )
 
-    response = f"✅ **Задание добавлено в список!**\n\n"
+    response = f"✅ Задание добавлено в список!\n\n"
     response += f"📚 Предмет: {temp_subject_name}\n"
     response += f"📝 Задание: {temp_task_text}\n"
     response += f"📅 Дедлайн: {deadline.strftime('%d.%m.%Y')}\n"
@@ -335,7 +325,7 @@ async def process_manual_deadline(message: Message, state: FSMContext):
 
     await state.set_state(HomeworkImportStates.waiting_for_next_action)
     await message.answer(
-        f"📊 **В списке сейчас {len(homeworks)} заданий.**\n\n"
+        f"📊 В списке сейчас {len(homeworks)} заданий.\n\n"
         "Что хочешь сделать?",
         reply_markup=get_next_action_keyboard()
     )
@@ -345,7 +335,7 @@ async def process_manual_deadline(message: Message, state: FSMContext):
 async def add_more_homework(callback, state: FSMContext):
     """Добавляем ещё одно задание - показываем выбор способа"""
     await callback.message.edit_text(
-        "📚 **Добавление нового задания**\n\n"
+        "📚 Добавление нового задания\n\n"
         "Выбери способ:",
         reply_markup=homework_keyboard
     )
@@ -391,7 +381,7 @@ async def finish_and_save(callback, state: FSMContext):
     close_db(db)
 
     if errors:
-        response = f"⚠️ **Сохранено частично:** {saved_count}/{len(homeworks)}\n\n"
+        response = f"⚠️ Сохранено частично: {saved_count}/{len(homeworks)}\n\n"
         response += f"Ошибки:\n" + "\n".join(errors[:5])
         await callback.message.edit_text(response)
         await state.clear()
@@ -404,7 +394,7 @@ async def finish_and_save(callback, state: FSMContext):
 
     # Просто выводим сообщение без кнопки
     await callback.message.edit_text(
-        f"✅ **{saved_count} заданий успешно сохранены!**\n\n"
+        f"✅ {saved_count} заданий успешно сохранены!\n\n"
         f"📊 Сохранено: {saved_count}\n\n"
         f"📢 Чтобы отправить задания в группу, напиши в чат команду:\n"
         f"`/send_to_group`\n\n"
@@ -444,7 +434,7 @@ async def send_single_task_to_group(task_id: int, group_telegram_id: int, bot: B
 
     # Текст сообщения
     message_text = (
-        f"📚 **Новое задание в группе!**\n\n"
+        f"📚 Новое задание в группе!\n\n"
         f"📖 Предмет: {subject_name}\n"
         f"📝 Задание: {task.title}\n"
         f"📅 Дедлайн: {deadline_str}\n"
@@ -482,7 +472,7 @@ async def send_single_task_to_group(task_id: int, group_telegram_id: int, bot: B
 
 @router.message(Command("send_to_group"))
 async def send_to_group_command(message: Message, state: FSMContext):
-    """Отправляет задания в группу по команде"""
+    """Отправляет задания каждому участнику группы в личку"""
     data = await state.get_data()
     task_ids = data.get('saved_task_ids', [])
 
@@ -493,60 +483,92 @@ async def send_to_group_command(message: Message, state: FSMContext):
         )
         return
 
-    # Получаем пользователя и его группу
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
 
     if not user or not user.group_id:
-        await message.answer(
-            "❌ У тебя нет группы для отправки."
-        )
+        await message.answer("❌ У тебя нет группы.")
         close_db(db)
         return
 
     group_id = user.group_id
-    group = db.query(Group).filter(Group.id == group_id).first()
-    group_telegram_id = group.telegram_id if group else None
 
+    # Получаем всех участников группы
+    members = db.query(User).join(GroupMember).filter(GroupMember.group_id == group_id).all()
     close_db(db)
 
-    if not group_telegram_id:
-        await message.answer("❌ Группа не найдена")
+    if not members:
+        await message.answer("❌ В группе нет участников.")
         return
 
-    await message.answer(f"📤 Отправляю {len(task_ids)} заданий в группу...")
+    await message.answer(f"📤 Отправляю {len(task_ids)} заданий {len(members)} участникам группы...")
 
     sent_count = 0
+    failed_count = 0
+
     for task_id in task_ids:
-        success = await send_single_task_to_group(task_id, group_telegram_id, message.bot)
-        if success:
-            sent_count += 1
-        await asyncio.sleep(0.5)
+        # Получаем задание
+        db = get_db()
+        task = db.query(Task).filter(Task.id == task_id).first()
+        subject = db.query(Subject).filter(Subject.id == task.subject_id).first()
+        subject_name = subject.name if subject else "Неизвестный предмет"
+        close_db(db)
+
+        deadline_str = task.deadline.strftime("%d.%m.%Y")
+        task_text = task.title
+
+        # Текст сообщения
+        message_text = (
+            f"📚 Новое задание!\n\n"
+            f"📖 Предмет: {subject_name}\n"
+            f"📝 Задание: {task_text}\n"
+            f"📅 Дедлайн: {deadline_str}\n"
+        )
+
+        # СОЗДАЁМ КЛАВИАТУРУ С КНОПКОЙ "ПОКАЗАТЬ ФОТО" (если есть фото)
+        keyboard = None
+        if task.photo_file_id:
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(
+                    text="📸 Показать фото",
+                    callback_data=f"show_photo:{task.id}"
+                )]
+            ])
+
+        # Отправляем каждому участнику
+        for member in members:
+            try:
+                if task.photo_file_id:
+                    # Если есть фото — отправляем фото + текст + кнопка
+                    await message.bot.send_photo(
+                        chat_id=member.telegram_id,
+                        photo=task.photo_file_id,
+                        caption=message_text,
+                        reply_markup=keyboard,
+                        parse_mode="Markdown"
+                    )
+                else:
+                    # Если фото нет — только текст + кнопка
+                    await message.bot.send_message(
+                        chat_id=member.telegram_id,
+                        text=message_text,
+                        reply_markup=keyboard,
+                        parse_mode="Markdown"
+                    )
+                sent_count += 1
+            except Exception as e:
+                failed_count += 1
+                print(f"Ошибка отправки участнику {member.telegram_id}: {e}")
+
+        await asyncio.sleep(0.5)  # задержка между заданиями
 
     await message.answer(
-        f"✅ **Отправлено в группу:** {sent_count}/{len(task_ids)}\n\n"
-        f"Студенты группы получили уведомления."
+        f"✅ Отправлено!\n\n"
+        f"📊 Заданий: {len(task_ids)}\n"
+        f"👥 Участников: {len(members)}\n"
+        f"📬 Успешно: {sent_count}\n"
+        f"❌ Ошибок: {failed_count}"
     )
 
     # Очищаем ID заданий после отправки
     await state.update_data(saved_task_ids=[])
-
-
-@router.callback_query(F.data.startswith("show_photo:"))
-async def show_photo(callback: CallbackQuery):
-    """Отправляет фото задания при нажатии на кнопку"""
-    task_id = int(callback.data.split(":")[1])
-
-    db = get_db()
-    task = db.query(Task).filter(Task.id == task_id).first()
-    close_db(db)
-
-    if not task or not task.photo_file_id:
-        await callback.answer("❌ Фото не найдено", show_alert=True)
-        return
-
-    await callback.message.answer_photo(
-        photo=task.photo_file_id,
-        caption=f"📸 Фото к заданию «{task.title}»"
-    )
-    await callback.answer()

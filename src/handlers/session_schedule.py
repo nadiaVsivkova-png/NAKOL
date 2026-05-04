@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from database.db import get_db, close_db
-from database.models import User
+from database.models import User, Subject
 from database.db import get_session_schedule
 from datetime import datetime
 
@@ -36,10 +36,13 @@ def extract_session_data(session):
         classroom = getattr(session, 'classroom', '')
 
         # Получаем название предмета
-        if hasattr(session, 'subject') and session.subject:
-            subject_name = session.subject.name
-        else:
-            subject_name = "Неизвестно"
+        subject_name = "Неизвестно"
+        if hasattr(session, 'subject_id') and session.subject_id:
+            db = get_db()
+            subject = db.query(Subject).filter(Subject.id == session.subject_id).first()
+            if subject:
+                subject_name = subject.name
+            close_db(db)
     else:
         # Это словарь
         date_value = session.get('date')
@@ -69,18 +72,18 @@ async def show_session_schedule(message: Message, state: FSMContext):
     close_db(db)
 
     # Получаем расписание в зависимости от роли пользователя
-    if user.is_elder and user.group_id:
+    if user.role == "starosta" and user.group_id:
         sessions = get_session_schedule(group_id=user.group_id)
-        schedule_type = "📚 **Расписание сессии для группы**"
+        schedule_type = "📚 Расписание сессии для группы"
     else:
         sessions = get_session_schedule(user_id=user.id)
-        schedule_type = "👤 **Моё расписание сессии**"
+        schedule_type = "👤 Моё расписание сессии"
 
     # Проверяем, есть ли расписание
     if not sessions:
         await message.answer(
             f"{schedule_type}\n\n"
-            "📭 **Расписание сессии не загружено.**\n\n"
+            "📭 Расписание сессии не загружено.\n\n"
             "Загрузите расписание через команду:\n"
             "/import_session"
         )
@@ -88,7 +91,7 @@ async def show_session_schedule(message: Message, state: FSMContext):
 
     # Формируем ответ
     response = f"{schedule_type}\n\n"
-    response += "📋 **Список экзаменов и занятий:**\n\n"
+    response += "📋 Список экзаменов и занятий:\n\n"
 
     current_date = None
 
@@ -101,7 +104,7 @@ async def show_session_schedule(message: Message, state: FSMContext):
         # Группировка по датам
         if date_display != current_date:
             current_date = date_display
-            response += f"📅 **{date_display}**\n"
+            response += f"📅 {date_display}\n"
 
         # Формируем строку времени
         time_str = data['start_time']

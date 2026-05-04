@@ -33,19 +33,19 @@ def create_session_schedule(group_id, user_id, subject_id, date, start_time, end
     db = get_db()
     try:
         schedule = SessionSchedule(
-            group_id=group_id,       # для группы — заполнен, для индивидуала — None
-            user_id=user_id,         # для индивидуала — заполнен, для группы — None
+            group_id=group_id,       
+            user_id=user_id,         
             subject_id=subject_id,
-            date=date,               # объект datetime
-            start_time=start_time,   # строка, например "09:00"
-            end_time=end_time,       # строка, например "10:30"
+            date=date,               
+            start_time=start_time,   
+            end_time=end_time,       
             classroom=classroom
         )
         db.add(schedule)
         db.commit()
         db.refresh(schedule)
         return schedule
-    finally:
+    finally:                                                                                                                                             
         close_db(db)
 
 
@@ -100,5 +100,22 @@ def create_schedule(group_id, user_id, subject_id, weekday, start_time, end_time
         db.commit()
         db.refresh(schedule)
         return schedule
+    finally:
+        close_db(db)
+
+def get_schedule(group_id=None, user_id=None):
+    """Возвращает записи обычного расписания для группы или пользователя"""
+    db = get_db()
+    try:
+        if group_id is not None:
+            return db.query(Schedule).filter(
+                Schedule.group_id == group_id
+            ).order_by(Schedule.weekday, Schedule.start_time).all()
+        elif user_id is not None:
+            return db.query(Schedule).filter(
+                Schedule.user_id == user_id
+            ).order_by(Schedule.weekday, Schedule.start_time).all()
+        else:
+            return []
     finally:
         close_db(db)

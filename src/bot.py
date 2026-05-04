@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message

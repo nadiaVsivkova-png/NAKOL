@@ -25,11 +25,18 @@ def parse_excel_schedule(file_path):
             else:
                 end_time = str(row[2])[:5] if row[2] else ""
 
+            week_type = "both"
+            if len(row) > 4 and row[4]:
+                week_type_val = str(row[4]).strip().lower()
+                if week_type_val in ["even", "odd", "both"]:
+                    week_type = week_type_val
+
             lesson = {
                 "day": str(day).strip(),
                 "start_time": str(start_time).strip(),
                 "end_time": str(end_time).strip(),
-                "subject": str(subject).strip()
+                "subject": str(subject).strip(),
+                "week_type": week_type
             }
 
             lessons.append(lesson)

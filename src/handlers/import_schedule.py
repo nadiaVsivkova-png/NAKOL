@@ -1,16 +1,16 @@
 import os
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, FSInputFile
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, FSInputFile, \
+    InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from parsers.excel_parser import parse_excel_schedule
 from parsers.photo_parser import ocr_photo, parse_schedule_from_photo
 from database.group_functions import get_or_create_subject
-from database.db import get_db, close_db
+from database.db import get_db, close_db, create_schedule
 from database.models import User, Subject
 from datetime import datetime
-from database.db import create_schedule
 
 router = Router()
 
@@ -27,6 +27,8 @@ class ScheduleManualStates(StatesGroup):
     waiting_for_start_time = State()
     waiting_for_end_time = State()
     waiting_for_subject = State()
+    waiting_for_week_type = State()
+    waiting_for_classroom = State()
     waiting_for_more = State()
 
 
@@ -40,6 +42,30 @@ schedule_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True,
     one_time_keyboard=True
 )
+
+
+def get_week_type_keyboard():
+    """Клавиатура для выбора типа недели"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="📅 Каждая неделя", callback_data="week_both"),
+            InlineKeyboardButton(text="📆 Чётная неделя", callback_data="week_even")
+        ],
+        [
+            InlineKeyboardButton(text="📆 Нечётная неделя", callback_data="week_odd"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data="week_cancel")
+        ]
+    ])
+    return keyboard
+
+
+def get_next_action_keyboard():
+    """Клавиатура для выбора: добавить ещё или завершить"""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Добавить ещё занятие", callback_data="schedule_add_more")],
+        [InlineKeyboardButton(text="✅ Завершить и сохранить всё", callback_data="schedule_finish")]
+    ])
+    return keyboard
 
 
 # ==================== КОМАНДА /import_schedule ====================
@@ -68,7 +94,7 @@ async def answer_download(message: Message):
             document=file,
             caption="📋 Шаблон расписания\n\n"
                     "Заполни файл и отправь его обратно. "
-                    "Не меняй название файла!"
+                    "Не меняй название файла!\n\n"
         )
     else:
         await message.answer("❌ Шаблон не найден.")
@@ -129,7 +155,8 @@ async def process_photo_schedule(message: Message, state: FSMContext):
                 weekday=lesson['day'],
                 start_time=lesson['start_time'],
                 end_time=lesson['end_time'],
-                classroom=None
+                week_type=lesson.get('week_type', 'both'),
+                classroom=lesson.get('classroom', "")
             )
             saved_count += 1
 
@@ -230,32 +257,108 @@ async def process_subject(message: Message, state: FSMContext):
         await message.answer(f"❌ Не удалось создать предмет {subject_name}")
         return
 
+    await state.update_data(temp_subject_id=subject_id, temp_subject_name=subject_name)
+    await state.set_state(ScheduleManualStates.waiting_for_week_type)
+
+    await message.answer(
+        "📅 Выбери тип недели для этого предмета:",
+        reply_markup=get_week_type_keyboard()
+    )
+
+
+# ==================== ОБРАБОТЧИКИ ВЫБОРА ТИПА НЕДЕЛИ ====================
+
+@router.callback_query(F.data == "week_both")
+async def set_week_both(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(temp_week_type="both")
+    await state.set_state(ScheduleManualStates.waiting_for_classroom)
+    await callback.message.edit_text("✅ Предмет будет на каждой неделе\n\nТеперь введи аудиторию (или отправь /skip):")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "week_even")
+async def set_week_even(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(temp_week_type="even")
+    await state.set_state(ScheduleManualStates.waiting_for_classroom)
+    await callback.message.edit_text(
+        "✅ Предмет будет только в чётную неделю\n\nТеперь введи аудиторию (или отправь /skip):")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "week_odd")
+async def set_week_odd(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(temp_week_type="odd")
+    await state.set_state(ScheduleManualStates.waiting_for_classroom)
+    await callback.message.edit_text(
+        "✅ Предмет будет только в нечётную неделю\n\nТеперь введи аудиторию (или отправь /skip):")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "week_cancel")
+async def cancel_week_type(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("❌ Ввод отменён. Используй /import_schedule чтобы начать заново")
+    await state.clear()
+    await callback.answer()
+
+
+@router.message(ScheduleManualStates.waiting_for_classroom)
+async def process_classroom(message: Message, state: FSMContext):
+    if message.text == "/skip":
+        classroom = ""
+    else:
+        classroom = message.text.strip()
+
     data = await state.get_data()
     new_lesson = {
         'day': data.get('temp_day'),
         'start_time': data.get('temp_start_time'),
         'end_time': data.get('temp_end_time'),
-        'subject_name': subject_name,
-        'subject_id': subject_id
+        'subject_name': data.get('temp_subject_name'),
+        'subject_id': data.get('temp_subject_id'),
+        'week_type': data.get('temp_week_type', 'both'),
+        'classroom': classroom
     }
 
     lessons = data.get('lessons', [])
     lessons.append(new_lesson)
-    await state.update_data(lessons=lessons, temp_day=None, temp_start_time=None, temp_end_time=None)
+    await state.update_data(lessons=lessons)
 
-    await message.answer(f"✅ Добавлено занятие №{len(lessons)}:\n\n"
-                         f"   📅 День: {new_lesson['day']}\n"
-                         f"   ⏰ Время: {new_lesson['start_time']} - {new_lesson['end_time']}\n"
-                         f"   📚 Предмет: {subject_name}")
+    await state.update_data(
+        temp_day=None,
+        temp_start_time=None,
+        temp_end_time=None,
+        temp_subject_id=None,
+        temp_subject_name=None,
+        temp_week_type=None
+    )
+
+    response = f"✅ Добавлено занятие №{len(lessons)}:\n\n"
+    response += f"   📅 День: {new_lesson['day']}\n"
+    response += f"   ⏰ Время: {new_lesson['start_time']} - {new_lesson['end_time']}\n"
+    response += f"   📚 Предмет: {new_lesson['subject_name']}\n"
+
+    week_type_text = {
+        "both": "Каждая неделя",
+        "even": "Только чётная неделя",
+        "odd": "Только нечётная неделя"
+    }.get(new_lesson['week_type'], new_lesson['week_type'])
+    response += f"   📆 {week_type_text}\n"
+
+    if classroom:
+        response += f"   🏛 Аудитория: {classroom}\n"
+
+    await message.answer(response)
 
     await state.set_state(ScheduleManualStates.waiting_for_more)
-    await message.answer("❓ Что дальше?\n\n"
-                         "/edit_schedule - добавить ещё\n"
-                         "/ready - сохранить\n"
-                         "/cancel - отменить")
+    await message.answer(
+        "❓ Что дальше?\n\n"
+        "✅ /add - добавить ещё одно занятие\n"
+        "✅ /ready - завершить и сохранить\n"
+        "❌ /cancel - отменить"
+    )
 
 
-@router.message(ScheduleManualStates.waiting_for_more, Command("edit_schedule"))
+@router.message(ScheduleManualStates.waiting_for_more, Command("add"))
 async def add_more(message: Message, state: FSMContext):
     await state.set_state(ScheduleManualStates.waiting_for_day)
     await message.answer("Введи день недели для нового занятия:")
@@ -291,7 +394,8 @@ async def finish_manual(message: Message, state: FSMContext):
             weekday=lesson['day'],
             start_time=lesson['start_time'],
             end_time=lesson['end_time'],
-            classroom=None
+            week_type=lesson.get('week_type', 'both'),
+            classroom=lesson.get('classroom', "")
         )
         saved_count += 1
 
@@ -359,7 +463,8 @@ async def handle_document(message: Message, state: FSMContext):
             weekday=lesson['day'],
             start_time=lesson['start_time'],
             end_time=lesson['end_time'],
-            classroom=None
+            week_type=lesson.get('week_type', 'both'),
+            classroom=lesson.get('classroom', "")
         )
         saved_count += 1
 

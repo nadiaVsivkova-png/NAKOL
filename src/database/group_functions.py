@@ -386,4 +386,35 @@ if __name__ == "__main__":
     print("ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
     print("=" * 40)
 
-    
+    def get_or_create_subject(name: str, group_id=None, user_id=None):
+    """находит предмет по названию или создаёт новый"""
+    db = get_db()
+    try:
+        # ищем существующий
+        subject = db.query(Subject).filter(
+            Subject.name == name,
+            Subject.group_id == group_id,
+            Subject.user_id == user_id
+        ).first()
+        
+        if subject:
+            db.close()
+            return subject.id
+        
+        # создаём новый
+        subject = Subject(
+            name=name,
+            group_id=group_id,
+            user_id=user_id
+        )
+        db.add(subject)
+        db.commit()
+        db.refresh(subject)
+        db.close()
+        return subject.id
+        
+    except Exception as e:
+        print(f"Ошибка в get_or_create_subject: {e}")
+        db.rollback()
+        db.close()
+        return None

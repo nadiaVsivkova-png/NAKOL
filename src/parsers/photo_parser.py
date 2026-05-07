@@ -35,7 +35,10 @@ def parse_schedule_from_photo(text):
     lines = text.split('\n')
 
     day_pattern = r'\b(пн|вт|ср|чт|пт|сб|вс)\b'
-    time_pattern = r'(\d{1,2}):(\d{2})'
+    week_type_pattern = r'\b(odd|even|both)\b'
+
+    # Паттерн для времени: 5:00-6:30 или 5:00 - 6:30 или 12:00-13:30
+    time_range_pattern = r'(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})'
 
     current_day = None
 
@@ -44,24 +47,47 @@ def parse_schedule_from_photo(text):
         if not line:
             continue
 
+        # Ищем день недели
         day_match = re.search(day_pattern, line.lower())
         if day_match:
             current_day = day_match.group(1)
+            # Удаляем день из строки, чтобы он не мешал
+            line = re.sub(day_pattern, '', line, flags=re.IGNORECASE)
 
-        times = re.findall(time_pattern, line)
+        # Ищем тип недели
+        week_type_match = re.search(week_type_pattern, line.lower())
+        week_type = week_type_match.group(1) if week_type_match else "both"
+        if week_type_match:
+            line = re.sub(week_type_pattern, '', line, flags=re.IGNORECASE)
 
-        subject = re.sub(day_pattern, '', line)
-        subject = re.sub(time_pattern, '', subject)
-        subject = re.sub(r'[^\w\s]', '', subject).strip()
+        # Ищем время
+        time_match = re.search(time_range_pattern, line)
+        if not time_match:
+            continue
 
-        if len(times) >= 2 and subject and current_day:
-            lesson = {
-                "day": current_day,
-                "start_time": f"{times[0][0]}:{times[0][1]}",
-                "end_time": f"{times[1][0]}:{times[1][1]}",
-                "subject": subject[:50]  # Ограничиваем длину
-            }
-            lessons.append(lesson)
+        start_time = time_match.group(1)
+        end_time = time_match.group(2)
+
+        # Удаляем время из строки
+        line = re.sub(time_range_pattern, '', line)
+
+        # Оставшийся текст — это предмет и возможно аудитория
+        # Убираем лишние символы
+        subject = re.sub(r'[^\w\sа-яА-Я]', '', line)
+        subject = re.sub(r'\s+', ' ', subject).strip()
+
+        # Если предмет пустой — пропускаем
+        if not subject or not current_day:
+            continue
+
+        lesson = {
+            "day": current_day,
+            "start_time": start_time,
+            "end_time": end_time,
+            "subject": subject[:50],
+            "week_type": week_type
+        }
+        lessons.append(lesson)
 
     return lessons
 

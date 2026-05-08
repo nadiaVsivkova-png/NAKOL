@@ -20,9 +20,11 @@ DATABASE_URL = f"sqlite:///{db_path}"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def get_db():
     db = SessionLocal()
     return db
+
 
 def close_db(db):
     db.close()
@@ -33,19 +35,19 @@ def create_session_schedule(group_id, user_id, subject_id, date, start_time, end
     db = get_db()
     try:
         schedule = SessionSchedule(
-            group_id=group_id,       
-            user_id=user_id,         
+            group_id=group_id,
+            user_id=user_id,
             subject_id=subject_id,
-            date=date,               
-            start_time=start_time,   
-            end_time=end_time,       
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
             classroom=classroom
         )
         db.add(schedule)
         db.commit()
         db.refresh(schedule)
         return schedule
-    finally:                                                                                                                                             
+    finally:
         close_db(db)
 
 
@@ -81,9 +83,12 @@ def delete_session_schedule(schedule_id):
         return True
     finally:
         close_db(db)
+
+
 from models import Schedule
 
-def create_schedule(group_id, user_id, subject_id, weekday, start_time, end_time, classroom):
+
+def create_schedule(group_id, user_id, subject_id, weekday, start_time, end_time, classroom, week_type="both"):
     """Создаёт запись в обычном расписании."""
     db = get_db()
     try:
@@ -94,7 +99,8 @@ def create_schedule(group_id, user_id, subject_id, weekday, start_time, end_time
             weekday=weekday,
             start_time=start_time,
             end_time=end_time,
-            classroom=classroom
+            classroom=classroom,
+            week_type=week_type
         )
         db.add(schedule)
         db.commit()
@@ -102,6 +108,7 @@ def create_schedule(group_id, user_id, subject_id, weekday, start_time, end_time
         return schedule
     finally:
         close_db(db)
+
 
 def get_schedule(group_id=None, user_id=None):
     """Возвращает записи обычного расписания для группы или пользователя"""

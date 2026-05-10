@@ -12,10 +12,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def delete_old_tasks():
-    """Удаляет задания, дедлайн которых был более 30 дней назад. работает каждый день"""
+    """Удаляет задания, дедлайн которых был более 14 дней назад. работает каждый день"""
     db = get_db()
     try:
-        month_ago = datetime.now() - timedelta(days=30)
+        month_ago = datetime.now() - timedelta(days=14)
 
         old_tasks = db.query(Task).filter(Task.deadline < month_ago).all()
         count = len(old_tasks)

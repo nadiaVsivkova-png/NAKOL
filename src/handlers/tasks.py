@@ -69,31 +69,31 @@ async def cmd_list(message: Message):
             else:
                 other.append(task_info)
         
-        response = "📋 **Твои задания:**\n\n"
+        response = "📋 <b>Твои задания:</b>\n\n"
         
         if urgent:
-            response += "🔴 **СРОЧНЫЕ (до завтра):**\n"
+            response += "🔴 <b>СРОЧНЫЕ (до завтра):</b>\n"
             for t in urgent:
                 photo_icon = " 📎" if t["has_photo"] else ""
                 response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')}){photo_icon}\n"
             response += "\n"
         
         if this_week:
-            response += "🟡 **НА ЭТОЙ НЕДЕЛЕ:**\n"
+            response += "🟡 <b>НА ЭТОЙ НЕДЕЛЕ:</b>\n"
             for t in this_week:
                 photo_icon = " 📎" if t["has_photo"] else ""
                 response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')}){photo_icon}\n"
             response += "\n"
         
         if other:
-            response += "🟢 **ОСТАЛЬНЫЕ:**\n"
+            response += "🟢 <b>ОСТАЛЬНЫЕ:</b>\n"
             for t in other:
                 photo_icon = " 📎" if t["has_photo"] else ""
                 response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')}){photo_icon}\n"
         
         response += "\n✏️ Чтобы отметить задание выполненным, введи /done"
         
-        await message.answer(response)
+        await message.answer(response, parse_mode="HTML")
         
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
@@ -215,15 +215,20 @@ async def process_done_callback(callback: CallbackQuery):
         if meme:
             if meme.type == "text":
                 await callback.message.answer(
-                    f"✅ Задание *{subject.name} – {task.title}* выполнено!\n\n{meme.content}"
+                    f"✅ Задание <b>{subject.name} – {task.title}</b> выполнено!\n\n{meme.content}",
+                    parse_mode="HTML"
                 )
             elif meme.type == "photo":
                 await callback.message.answer_photo(
                     meme.content,
-                    caption=f"✅ Задание *{subject.name} – {task.title}* выполнено!"
+                    caption=f"✅ Задание <b>{subject.name} – {task.title}</b> выполнено!",
+                    parse_mode="HTML"
                 )
         else:
-            await callback.message.answer(f"✅ Задание *{subject.name} – {task.title}* выполнено! Ты справился!")
+            await callback.message.answer(
+                f"✅ Задание <b>{subject.name} – {task.title}</b> выполнено! Ты справился!",
+                parse_mode="HTML"
+            )
         
         await callback.answer("Готово!")
         

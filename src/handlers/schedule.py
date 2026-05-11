@@ -109,3 +109,4 @@ async def show_schedule(message: Message, state: FSMContext):
         response += "\n"
 
     await message.answer(response)
+    await message.answer(response)

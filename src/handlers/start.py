@@ -8,35 +8,52 @@ from user_functions import get_user
 
 router = Router()
 
-# полный список команд для старосты и индивидуала
-FULL_COMMANDS = (
-    "/start – начало работы\n"
-    "/commands – список всех команд\n"
-    "/import_schedule – импорт расписания занятий\n"
-    "/import_session – импорт расписания сессии\n"
-    "/import_homework – добавить домашнее задание\n"
-    "/list – список заданий\n"
-    "/done <ID> – отметить задание выполненным\n"
-    "/free_time – предложить срочные задания\n"
-    "/remind – настройка напоминаний\n"
-    "/urgent – срочное уведомление от старосты\n"
+STAROSTA_COMMANDS = (
+    "📥 <b>Загрузить расписание или домашку</b>\n"
+    "/import_schedule – загрузить расписание\n"
+    "/import_homework – загрузить домашку\n"
+    "/import_session – загрузить расписание сессии\n\n"
+    "📋 <b>Мои задания</b>\n"
+    "/list – посмотреть список заданий\n"
+    "/done – отметить задание выполненным\n"
+    "/free_time – предложить срочные задания\n\n"
+    "🔔 <b>Уведомления и напоминания</b>\n"
+    "/remind – настроить напоминания\n"
+    "/urgent – срочное уведомление от старосты\n\n"
+    "⚙️ <b>Управление</b>\n"
     "/remove_subject – удалить предмет\n"
-    "/confirm_schedule – подтвердить расписание\n"
-    "/edit_schedule – редактировать расписание\n"
-    "/template – шаблон расписания\n"
-    "/send_to_group – отправить задание группе\n"
-    "/session_schedule – посмотреть расписание сессии"
+    "/session_schedule – посмотреть расписание сессии\n\n"
+    "📌 <b>Прочее</b>\n"
+    "/commands – список всех команд"
 )
 
-# список для участника группы
+INDIVIDUAL_COMMANDS = (
+    "📥 <b>Загрузить расписание или домашку</b>\n"
+    "/import_schedule – загрузить расписание\n"
+    "/import_homework – загрузить домашку\n"
+    "/import_session – загрузить расписание сессии\n\n"
+    "📋 <b>Мои задания</b>\n"
+    "/list – посмотреть список заданий\n"
+    "/done – отметить задание выполненным\n"
+    "/free_time – предложить срочные задания\n\n"
+    "🔔 <b>Уведомления и напоминания</b>\n"
+    "/remind – настроить напоминания\n\n"
+    "⚙️ <b>Управление</b>\n"
+    "/remove_subject – удалить предмет\n"
+    "/session_schedule – посмотреть расписание сессии\n\n"
+    "📌 <b>Прочее</b>\n"
+    "/commands – список всех команд"
+)
+
 MEMBER_COMMANDS = (
-    "/start – начало работы\n"
-    "/commands – список всех команд\n"
-    "/list – список заданий\n"
-    "/done <ID> – отметить задание выполненным\n"
-    "/free_time – предложить срочные задания\n"
-    "/remind – настройка напоминаний\n"
-    "/session_schedule – посмотреть расписание сессии"
+    "📋 <b>Мои задания</b>\n"
+    "/list – посмотреть список заданий\n"
+    "/done – отметить задание выполненным\n"
+    "/free_time – предложить срочные задания\n\n"
+    "🔔 <b>Уведомления и напоминания</b>\n"
+    "/remind – настроить напоминания\n\n"
+    "📌 <b>Прочее</b>\n"
+    "/commands – список всех команд"
 )
 
 @router.message(Command("start"))
@@ -52,6 +69,8 @@ async def cmd_start(message: Message):
 async def show_commands(message: Message):
     user = get_user(message.from_user.id)
     if user and user.role == "group_member":
-        await message.answer(f"📋 Доступные команды:\n\n{MEMBER_COMMANDS}")
+        await message.answer(f"📋 Доступные команды:\n\n{MEMBER_COMMANDS}", parse_mode="HTML")
+    elif user and user.role == "individual":
+        await message.answer(f"📋 Доступные команды:\n\n{INDIVIDUAL_COMMANDS}", parse_mode="HTML")
     else:
-        await message.answer(f"📋 Доступные команды:\n\n{FULL_COMMANDS}")
+        await message.answer(f"📋 Доступные команды:\n\n{STAROSTA_COMMANDS}", parse_mode="HTML")

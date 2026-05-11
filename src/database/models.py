@@ -5,6 +5,7 @@ from datetime import datetime
 Base = declarative_base()
 
 class User(Base):
+    """так хранится пользователь"""
     __tablename__ = 'users'
     
     id = Column(Integer, primary_key=True)
@@ -15,6 +16,7 @@ class User(Base):
     created_at = Column(DateTime, nullable=False)
 
 class Group(Base):
+    """так хранится группа"""
     __tablename__ = 'groups'
     
     id = Column(Integer, primary_key=True)
@@ -23,6 +25,7 @@ class Group(Base):
     starosta_id = Column(Integer, nullable=False)  # telegram_id старосты
 
 class GroupMember(Base):
+    """так хранятся участники группы"""
     __tablename__ = 'group_members'
     
     id = Column(Integer, primary_key=True)
@@ -30,6 +33,7 @@ class GroupMember(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
 
 class Subject(Base):
+    """хранение предмета"""
     __tablename__ = 'subjects'
     
     id = Column(Integer, primary_key=True)
@@ -38,6 +42,7 @@ class Subject(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
 
 class Task(Base):
+    """так хранится каждое задание для групп"""
     __tablename__ = 'tasks'
     
     id = Column(Integer, primary_key=True)
@@ -49,6 +54,7 @@ class Task(Base):
     photo_file_id = Column(String, nullable=True)
 
 class UserTask(Base):
+    """так кхранятся задания для индивидуала"""
     __tablename__ = 'user_tasks'
     
     id = Column(Integer, primary_key=True)
@@ -58,6 +64,7 @@ class UserTask(Base):
     completed_at = Column(DateTime, nullable=True)
 
 class ReminderSetting(Base):
+    """настройки напоминаний для каждого пользователя"""
     __tablename__ = 'reminder_settings'
     
     id = Column(Integer, primary_key=True)
@@ -68,6 +75,7 @@ class ReminderSetting(Base):
     custom_times = Column(JSON, nullable=True)  # например ["10:00", "18:00"]
 
 class Meme(Base):
+    """зранение мемов"""
     __tablename__ = 'memes'
     
     id = Column(Integer, primary_key=True)
@@ -75,6 +83,7 @@ class Meme(Base):
     content = Column(String, nullable=False)
     
 class SessionSchedule(Base):
+    """хранение каждого экзамена сессии"""
     __tablename__ = 'session_schedules'
 
     id = Column(Integer, primary_key=True)
@@ -88,6 +97,7 @@ class SessionSchedule(Base):
 
 
 class UrgentNotification(Base):
+    """хранение сообщений от старосты"""
     __tablename__ = 'urgent_notifications'
 
     id = Column(Integer, primary_key=True)
@@ -95,3 +105,27 @@ class UrgentNotification(Base):
     sender_id = Column(Integer, nullable=False)  # telegram_id отправителя
     message = Column(String, nullable=False)
     sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+class Schedule(Base):
+    """так хранятся данные расписания на неделю"""
+    __tablename__ = 'schedules'
+
+    id = Column(Integer, primary_key=True)
+    group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    subject_id = Column(Integer, ForeignKey('subjects.id'), nullable=False)
+    weekday = Column(String, nullable=False)  # например "Понедельник" или "1"
+    start_time = Column(String, nullable=False)  # например "09:00"
+    end_time = Column(String, nullable=True)     # например "10:30"
+    classroom = Column(String, nullable=True)
+
+
+class NotificationLog(Base):
+    """храним данные об отправленных уведомлениях"""
+    __tablename__ = "notification_logs"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    type = Column(String, nullable=False)

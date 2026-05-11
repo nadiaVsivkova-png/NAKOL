@@ -11,6 +11,11 @@ from database.db import get_db, close_db
 from database.models import User, Subject
 from datetime import datetime
 #from database.db import create_schedule
+from database.group_functions import get_or_create_subject
+from database.db import get_db, close_db
+from database.models import User, Subject
+from datetime import datetime
+from database.db import create_schedule
 
 router = Router()
 

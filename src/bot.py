@@ -19,8 +19,8 @@ from handlers.urgent import router as urgent_router
 from handlers.import_session import router as import_session_router
 from handlers.session_schedule import router as session_schedule_router
 from handlers.remove_subject import router as remove_subject_router
-
-# from handlers.reminders import router as reminders_router  # сломано, нет reminder_functions
+from handlers.schedule import router as viewschedule_router
+from handlers.reminders import router as reminders_router
 
 load_dotenv()
 
@@ -42,7 +42,8 @@ dp.include_router(urgent_router)
 dp.include_router(import_session_router)
 dp.include_router(session_schedule_router)
 dp.include_router(remove_subject_router)
-# dp.include_router(reminders_router)
+dp.include_router(viewschedule_router)
+dp.include_router(reminders_router)
 
 
 async def main():

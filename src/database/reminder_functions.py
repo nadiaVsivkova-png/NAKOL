@@ -24,6 +24,7 @@ def get_reminder_settings(user_id: int) -> ReminderSetting | None:
                 user_id=user_id,
                 mode="auto",
                 reminder_3h_enabled=True,
+                reminder_24h_enabled=True,
             )
             db.add(settings)
             db.commit()
@@ -61,6 +62,8 @@ def set_reminder_settings(user_id: int, mode: str, **kwargs) -> ReminderSetting 
             settings.reminder_24h_time = kwargs["reminder_24h_time"]
         if "reminder_3h_enabled" in kwargs:
             settings.reminder_3h_enabled = bool(kwargs["reminder_3h_enabled"])
+        if "reminder_24h_enabled" in kwargs:
+            settings.reminder_24h_enabled = bool(kwargs["reminder_24h_enabled"])
         if "custom_times" in kwargs:
             settings.custom_times = kwargs["custom_times"]
 

@@ -332,13 +332,24 @@ async def process_manual_deadline(message: Message, state: FSMContext):
 
 
 @router.callback_query(HomeworkImportStates.waiting_for_next_action, F.data == "homework_add_more")
-async def add_more_homework(callback, state: FSMContext):
+async def add_more_homework(callback: CallbackQuery, state: FSMContext):
     """Добавляем ещё одно задание - показываем выбор способа"""
-    await callback.message.edit_text(
+    # Удаляем сообщение с кнопками
+    await callback.message.delete()
+
+    # Отправляем новое сообщение с клавиатурой выбора способа
+    await callback.message.answer(
         "📚 Добавление нового задания\n\n"
         "Выбери способ:",
         reply_markup=homework_keyboard
     )
+
+    # Очищаем состояние, чтобы начать заново
+    await state.clear()
+    await state.update_data(homeworks=[])
+    await state.set_state(
+        HomeworkImportStates.waiting_for_photo)
+
     await callback.answer()
 
 
@@ -397,9 +408,8 @@ async def finish_and_save(callback, state: FSMContext):
         f"✅ {saved_count} заданий успешно сохранены!\n\n"
         f"📊 Сохранено: {saved_count}\n\n"
         f"📢 Чтобы отправить задания в группу, напиши в чат команду:\n"
-        f"`/send_to_group`\n\n"
-        f"Ты можешь отправить их сейчас или позже.",
-        parse_mode="Markdown"
+        f"/send_to_group\n\n"
+        f"Ты можешь отправить их сейчас или позже."
     )
 
     await callback.answer()

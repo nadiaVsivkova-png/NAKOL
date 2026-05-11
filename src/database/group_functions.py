@@ -3,7 +3,7 @@ import string
 from db import get_db
 from models import Group, GroupMember, User, Subject, Task, UserTask
 from datetime import datetime
-
+import os
 def generate_group_code(length=6):
     """Генерирует случайный код группы"""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -218,8 +218,43 @@ def delete_subject(subject_id: int, user_id=None, group_id=None):
         db.close()
         return None
 
+
+MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024  
+MAX_TASKS_WITH_PHOTO = 200           
+
+def check_storage_limit(group_id=None, user_id=None) -> tuple[bool, str]:
+    """Проверяет, не превышен ли лимит хранилища перед сохранением фото"""
+    db = get_db()
+    try:
+        query = db.query(Task).filter(Task.photo_file_id.isnot(None))
+
+        if group_id is not None:
+            query = query.filter(Task.group_id == group_id)
+        elif user_id is not None:
+            query = query.filter(Task.created_by == user_id)
+
+        count = query.count()
+
+        if count >= MAX_TASKS_WITH_PHOTO:
+            return False, f"Превышен лимит фото ({MAX_TASKS_WITH_PHOTO} шт.). Удали старые задания с фото."
+
+        return True, ""
+
+    except Exception as e:
+        print(f"Ошибка при проверке лимита: {e}")
+        return False, "Ошибка при проверке лимита хранилища."
+    finally:
+        db.close()
+
 def create_task(subject_id: int, title: str, deadline, group_id=None, created_by: int = None, photo_file_id=None):
     """Создаёт задание и привязывает к пользователю"""
+    """Создаёт задание. photo_file_id не обязателен, по умолчанию None"""
+    if photo_file_id is not None:
+        allowed, reason = check_storage_limit(group_id=group_id, user_id=created_by)
+        if not allowed:
+            print(f"Отказ в сохранении фото: {reason}")
+            return None, reason  
+
     db = get_db()
     try:
         task = Task(
@@ -248,13 +283,14 @@ def create_task(subject_id: int, title: str, deadline, group_id=None, created_by
         
         print(f"Задание '{title}' создано (id={task.id})")
         db.close()
-        return task
+        return task, None 
     except Exception as e:
         print(f"Ошибка при создании задания: {e}")
         db.rollback()
         db.close()
-        return None
-
+        return None, str(e)
+        
+        
 def get_task_photo(task_id: int):
     """возвращает задание с фото по id задания"""
     db = get_db()

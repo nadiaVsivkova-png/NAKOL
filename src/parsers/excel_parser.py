@@ -28,12 +28,19 @@ def parse_excel_schedule(file_path):
             if len(row) > 4 and row[4]:
                 classroom = str(row[4]).strip()
 
+            week_type = "both"
+            if len(row) > 4 and row[4]:
+                week_type_val = str(row[4]).strip().lower()
+                if week_type_val in ["even", "odd", "both"]:
+                    week_type = week_type_val
+
             lesson = {
                 "day": day,
                 "start_time": str(start_time).strip(),
                 "end_time": str(end_time).strip(),
                 "subject": str(subject).strip(),
-                "classroom": classroom
+                "classroom": classroom,
+                "week_type": week_type
             }
 
             lessons.append(lesson)

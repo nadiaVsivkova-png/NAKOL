@@ -4,10 +4,11 @@ from datetime import datetime
 
 Base = declarative_base()
 
+
 class User(Base):
     """так хранится пользователь"""
     __tablename__ = 'users'
-    
+
     id = Column(Integer, primary_key=True)
     telegram_id = Column(Integer, unique=True, nullable=False)
     username = Column(String, nullable=True)
@@ -15,36 +16,40 @@ class User(Base):
     group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
     created_at = Column(DateTime, nullable=False)
 
+
 class Group(Base):
     """так хранится группа"""
     __tablename__ = 'groups'
-    
+
     id = Column(Integer, primary_key=True)
     group_code = Column(String, unique=True, nullable=False)
     group_name = Column(String, nullable=False)
     starosta_id = Column(Integer, nullable=False)  # telegram_id старосты
 
+
 class GroupMember(Base):
     """так хранятся участники группы"""
     __tablename__ = 'group_members'
-    
+
     id = Column(Integer, primary_key=True)
     group_id = Column(Integer, ForeignKey('groups.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
 
+
 class Subject(Base):
     """хранение предмета"""
     __tablename__ = 'subjects'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
 
+
 class Task(Base):
     """так хранится каждое задание для групп"""
     __tablename__ = 'tasks'
-    
+
     id = Column(Integer, primary_key=True)
     subject_id = Column(Integer, ForeignKey('subjects.id'), nullable=False)
     title = Column(String, nullable=False)
@@ -53,35 +58,40 @@ class Task(Base):
     created_by = Column(Integer, nullable=False)  # telegram_id
     photo_file_id = Column(String, nullable=True)
 
+
 class UserTask(Base):
     """так кхранятся задания для индивидуала"""
     __tablename__ = 'user_tasks'
-    
+
     id = Column(Integer, primary_key=True)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     status = Column(String, nullable=False)  # active / done
     completed_at = Column(DateTime, nullable=True)
 
+
 class ReminderSetting(Base):
     """настройки напоминаний для каждого пользователя"""
     __tablename__ = 'reminder_settings'
-    
+
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False, unique=True)
     mode = Column(String, nullable=False)  # auto / custom / off
     reminder_24h_time = Column(String, nullable=True)  # например "20:00"
     reminder_3h_enabled = Column(Boolean, default=True)
+    reminder_24h_enabled = Column(Boolean, default=True)
     custom_times = Column(JSON, nullable=True)  # например ["10:00", "18:00"]
+
 
 class Meme(Base):
     """зранение мемов"""
     __tablename__ = 'memes'
-    
+
     id = Column(Integer, primary_key=True)
     type = Column(String, nullable=False)  # photo / text
     content = Column(String, nullable=False)
-    
+
+
 class SessionSchedule(Base):
     """хранение каждого экзамена сессии"""
     __tablename__ = 'session_schedules'
@@ -92,7 +102,7 @@ class SessionSchedule(Base):
     subject_id = Column(Integer, ForeignKey('subjects.id'), nullable=False)
     date = Column(DateTime, nullable=False)
     start_time = Column(String, nullable=False)  # например "09:00"
-    end_time = Column(String, nullable=True)    # например "10:30"
+    end_time = Column(String, nullable=True)  # например "10:30"
     classroom = Column(String, nullable=True)
 
 
@@ -106,6 +116,7 @@ class UrgentNotification(Base):
     message = Column(String, nullable=False)
     sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
+
 class Schedule(Base):
     """так хранятся данные расписания на неделю"""
     __tablename__ = 'schedules'
@@ -116,8 +127,9 @@ class Schedule(Base):
     subject_id = Column(Integer, ForeignKey('subjects.id'), nullable=False)
     weekday = Column(String, nullable=False)  # например "Понедельник" или "1"
     start_time = Column(String, nullable=False)  # например "09:00"
-    end_time = Column(String, nullable=True)     # например "10:30"
+    end_time = Column(String, nullable=True)  # например "10:30"
     classroom = Column(String, nullable=True)
+    week_type = Column(String, nullable=False, default="both")
 
 
 class NotificationLog(Base):

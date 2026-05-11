@@ -1,11 +1,9 @@
-﻿venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# секреты не коммитим
+__pycache__
+*.pyc 
+nakol
+nakol.db
+nakol.db
 .env
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-.idea/
+.env.local
+.env.production

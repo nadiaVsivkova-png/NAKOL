@@ -7,6 +7,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from parsers.excel_parser import parse_excel_schedule
 from parsers.photo_parser import ocr_photo, parse_schedule_from_photo
+#from database.group_functions import create_group
+from database.db import get_db, close_db
+from database.models import User, Subject
+from datetime import datetime
+#from database.db import create_schedule
 from database.group_functions import get_or_create_subject
 from database.db import get_db, close_db, create_schedule
 from database.models import User, Subject

@@ -158,6 +158,13 @@ async def show_schedule(message: Message, state: FSMContext):
         if odd_message:
             await message.answer(odd_message)
 
+        if schedule['classroom'] and schedule['classroom'] != "не указана":
+            response += f"   🏛 Аудитория: {schedule['classroom']}\n"
+
+        response += "\n"
+
+    await message.answer(response)
+    await message.answer(response)
     # Если нет предметов ни на одной неделе (только общие)
     if not even_week and not odd_week and both_weeks:
         # Уже отправили общее сообщение, ничего не делаем

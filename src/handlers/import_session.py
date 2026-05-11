@@ -9,6 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 from database.db import create_session_schedule, get_db, close_db
 from database.models import User, Subject
 from datetime import datetime
+#from database.group_functions import get_or_create_subject
 from database.group_functions import get_or_create_subject
 
 
@@ -504,6 +505,7 @@ async def confirm_schedule(message: Message, state: FSMContext):
     else:
         await message.answer(
             f"✅ Расписание успешно сохранено!\n\n"
+            f"📊 Добавлено занятий: {saved_count}"
             f"📊 Добавлено экзаменов: {saved_count}"
         )
 

@@ -375,7 +375,7 @@ async def finish_and_save(callback, state: FSMContext):
     await callback.message.edit_text(f"💾 Сохраняю {len(homeworks)} заданий...")
 
     for i, hw in enumerate(homeworks, 1):
-        task = create_task(
+        task, error = create_task(
             subject_id=hw['subject_id'],
             title=hw['task_text'],
             deadline=hw['deadline'],
@@ -383,8 +383,8 @@ async def finish_and_save(callback, state: FSMContext):
             photo_file_id=hw.get('photo_file_id')
         )
 
-        if task is None:
-            errors.append(f"Задание {i}: {hw['subject_name']}")
+        if error:
+            errors.append(f"Задание {i}: {hw['subject_name']} — {error}")
         else:
             saved_count += 1
             saved_tasks.append(task)
@@ -400,7 +400,7 @@ async def finish_and_save(callback, state: FSMContext):
         return
 
     # Сохраняем ID заданий в состояние для последующей отправки
-    task_ids = [t.id for t in saved_tasks]
+    task_ids = [t.id for t in saved_tasks if t is not None]
     await state.update_data(saved_task_ids=task_ids)
 
     # Просто выводим сообщение без кнопки

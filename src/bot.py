@@ -21,6 +21,7 @@ from handlers.session_schedule import router as session_schedule_router
 from handlers.remove_subject import router as remove_subject_router
 from handlers.schedule import router as viewschedule_router
 from handlers.reminders import router as reminders_router
+from handlers.reminders import start_reminder_scheduler
 
 load_dotenv()
 
@@ -36,8 +37,8 @@ dp.include_router(tasks_router)
 dp.include_router(registration_router)
 dp.include_router(join_group_router)
 dp.include_router(individual_router)
-dp.include_router(import_schedule_router)
 dp.include_router(import_homework_router)
+dp.include_router(import_schedule_router)
 dp.include_router(urgent_router)
 dp.include_router(import_session_router)
 dp.include_router(session_schedule_router)
@@ -47,6 +48,7 @@ dp.include_router(reminders_router)
 
 
 async def main():
+    asyncio.create_task(start_reminder_scheduler(bot))
     try:
         await dp.start_polling(bot)
     finally:

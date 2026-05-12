@@ -28,6 +28,7 @@ class HomeworkImportStates(StatesGroup):
 
     # Общее
     waiting_for_next_action = State()  # ожидаем решение: добавить ещё или завершить
+    waiting_for_method_selection = State()
 
 
 # Клавиатура выбора способа
@@ -69,13 +70,14 @@ async def handle_photo_method(message: Message, state: FSMContext):
     await message.answer(
         "📸 Отправь фото домашнего задания.\n\n"
         "Фото будет сохранено как условие задачи.\n\n"
-        "❌ /cancel - отменить",
+        "❌ /abort_homework - отменить",
         reply_markup=ReplyKeyboardRemove()
     )
 
 
 @router.message(HomeworkImportStates.waiting_for_photo, F.photo)
 async def handle_photo_homework(message: Message, state: FSMContext):
+    print("DEBUG: фото в import_homework")
     """Получаем фото и сохраняем file_id"""
     photo = message.photo[-1]
     photo_file_id = photo.file_id
@@ -86,25 +88,43 @@ async def handle_photo_homework(message: Message, state: FSMContext):
     await message.answer(
         "✅ Фото получено и сохранено!\n\n"
         "Теперь введи название предмета:\n\n"
-        "❌ /cancel - отменить"
+        "❌ /abort_homework - отменить"
     )
 
 
 @router.message(HomeworkImportStates.waiting_for_photo)
-async def invalid_photo(message: Message):
+async def invalid_photo(message: Message, state: FSMContext):
     """Если отправили не фото"""
+    # Проверяем на команду отмены
+    if message.text and message.text.startswith('/abort_homework'):
+        await abort_homework_import(message, state)
+        return
+
+    # Игнорируем другие команды
+    if message.text and message.text.startswith('/'):
+        return
+
     await message.answer(
         "❌ Пожалуйста, отправь фото.\n\n"
-        "Или используй /cancel для отмены."
+        "Или используй /abort_homework для отмены."
     )
 
 
 @router.message(HomeworkImportStates.waiting_for_photo_subject)
 async def process_photo_subject(message: Message, state: FSMContext):
     """Получаем название предмета для фото"""
+    # Проверяем на команду отмены
+    if message.text and message.text.startswith('/abort_homework'):
+        await abort_homework_import(message, state)
+        return
+
+    # Игнорируем другие команды
+    if message.text and message.text.startswith('/'):
+        return
+
     subject_name = message.text.strip()
 
-    if not subject_name or subject_name.startswith('/'):
+    if not subject_name:
         await message.answer("❌ Введи корректное название предмета:")
         return
 
@@ -132,13 +152,22 @@ async def process_photo_subject(message: Message, state: FSMContext):
         "Теперь введи дедлайн в формате:\n"
         "• ДД.ММ.ГГГГ (например: 25.12.2026)\n"
         "• ДД.ММ.ГГ (например: 25.12.26)\n\n"
-        "❌ /cancel - отменить"
+        "❌ /abort_homework - отменить"
     )
 
 
 @router.message(HomeworkImportStates.waiting_for_photo_deadline)
 async def process_photo_deadline(message: Message, state: FSMContext):
     """Получаем дедлайн и сохраняем задание с фото"""
+    # Проверяем на команду отмены
+    if message.text and message.text.startswith('/abort_homework'):
+        await abort_homework_import(message, state)
+        return
+
+    # Игнорируем другие команды
+    if message.text and message.text.startswith('/'):
+        return
+
     deadline_str = message.text.strip()
 
     date_formats = ["%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d", "%d/%m/%Y"]
@@ -155,7 +184,7 @@ async def process_photo_deadline(message: Message, state: FSMContext):
         await message.answer(
             "❌ Неверный формат даты.\n\n"
             "Попробуй ещё раз (например: 25.12.2026):\n\n"
-            "❌ /cancel - отменить"
+            "❌ /abort_homework - отменить"
         )
         return
 
@@ -209,7 +238,7 @@ async def handle_manual_method(message: Message, state: FSMContext):
     await message.answer(
         "✍️ Ручной ввод задания\n\n"
         "Введи название предмета:\n\n"
-        "❌ /cancel - отменить",
+        "❌ /abort_homework - отменить",
         reply_markup=ReplyKeyboardRemove()
     )
 
@@ -217,9 +246,18 @@ async def handle_manual_method(message: Message, state: FSMContext):
 @router.message(HomeworkImportStates.waiting_for_manual_subject)
 async def process_manual_subject(message: Message, state: FSMContext):
     """Получаем название предмета для ручного ввода"""
+    # Проверяем на команду отмены
+    if message.text and message.text.startswith('/abort_homework'):
+        await abort_homework_import(message, state)
+        return
+
+    # Игнорируем другие команды
+    if message.text and message.text.startswith('/'):
+        return
+
     subject_name = message.text.strip()
 
-    if not subject_name or subject_name.startswith('/'):
+    if not subject_name:
         await message.answer("❌ Введи корректное название предмета:")
         return
 
@@ -245,16 +283,25 @@ async def process_manual_subject(message: Message, state: FSMContext):
     await message.answer(
         f"✅ Предмет: {subject_name}\n\n"
         "Теперь введи текст задания (что нужно сделать):\n\n"
-        "❌ /cancel - отменить"
+        "❌ /abort_homework - отменить"
     )
 
 
 @router.message(HomeworkImportStates.waiting_for_task_text)
 async def process_task_text(message: Message, state: FSMContext):
     """Получаем текст задания для ручного ввода"""
+    # Проверяем на команду отмены
+    if message.text and message.text.startswith('/abort_homework'):
+        await abort_homework_import(message, state)
+        return
+
+    # Игнорируем другие команды
+    if message.text and message.text.startswith('/'):
+        return
+
     task_text = message.text.strip()
 
-    if not task_text or task_text.startswith('/'):
+    if not task_text:
         await message.answer("❌ Введи корректный текст задания:")
         return
 
@@ -266,13 +313,22 @@ async def process_task_text(message: Message, state: FSMContext):
         "Теперь введи дедлайн в формате:\n"
         "• ДД.ММ.ГГГГ (например: 25.12.2026)\n"
         "• ДД.ММ.ГГ (например: 25.12.26)\n\n"
-        "❌ /cancel - отменить"
+        "❌ /abort_homework - отменить"
     )
 
 
 @router.message(HomeworkImportStates.waiting_for_manual_deadline)
 async def process_manual_deadline(message: Message, state: FSMContext):
     """Получаем дедлайн и сохраняем задание без фото"""
+    # Проверяем на команду отмены
+    if message.text and message.text.startswith('/abort_homework'):
+        await abort_homework_import(message, state)
+        return
+
+    # Игнорируем другие команды
+    if message.text and message.text.startswith('/'):
+        return
+
     deadline_str = message.text.strip()
 
     date_formats = ["%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d", "%d/%m/%Y"]
@@ -289,7 +345,7 @@ async def process_manual_deadline(message: Message, state: FSMContext):
         await message.answer(
             "❌ Неверный формат даты.\n\n"
             "Попробуй ещё раз (например: 25.12.2026):\n\n"
-            "❌ /cancel - отменить"
+            "❌ /abort_homework - отменить"
         )
         return
 
@@ -334,8 +390,11 @@ async def process_manual_deadline(message: Message, state: FSMContext):
 @router.callback_query(HomeworkImportStates.waiting_for_next_action, F.data == "homework_add_more")
 async def add_more_homework(callback: CallbackQuery, state: FSMContext):
     """Добавляем ещё одно задание - показываем выбор способа"""
-    # Удаляем сообщение с кнопками
     await callback.message.delete()
+
+    # Сохраняем текущий список заданий
+    data = await state.get_data()
+    existing_homeworks = data.get('homeworks', [])
 
     # Отправляем новое сообщение с клавиатурой выбора способа
     await callback.message.answer(
@@ -344,17 +403,24 @@ async def add_more_homework(callback: CallbackQuery, state: FSMContext):
         reply_markup=homework_keyboard
     )
 
-    # Очищаем состояние, чтобы начать заново
-    await state.clear()
-    await state.update_data(homeworks=[])
-    await state.set_state(
-        HomeworkImportStates.waiting_for_photo)
+    await state.set_state(HomeworkImportStates.waiting_for_method_selection)
+
+    # Очищаем только временные данные
+    await state.update_data(
+        temp_subject_id=None,
+        temp_subject_name=None,
+        temp_task_text=None,
+        temp_photo_file_id=None,
+        temp_deadline=None
+    )
+    # Убеждаемся, что homeworks не затерлись
+    await state.update_data(homeworks=existing_homeworks)
 
     await callback.answer()
 
 
 @router.callback_query(HomeworkImportStates.waiting_for_next_action, F.data == "homework_finish")
-async def finish_and_save(callback, state: FSMContext):
+async def finish_and_save(callback: CallbackQuery, state: FSMContext):
     """Завершаем ввод и сохраняем все задания в БД"""
     data = await state.get_data()
     homeworks = data.get('homeworks', [])
@@ -422,6 +488,7 @@ async def send_single_task_to_group(task_id: int, group_telegram_id: int, bot: B
     Args:
         task_id: ID задания в БД
         group_telegram_id: Telegram ID группы (куда отправлять)
+        bot: экземпляр бота
 
     Returns:
         bool: True если успешно, False если ошибка
@@ -582,3 +649,60 @@ async def send_to_group_command(message: Message, state: FSMContext):
 
     # Очищаем ID заданий после отправки
     await state.update_data(saved_task_ids=[])
+
+
+@router.message(Command("abort_homework"))
+async def abort_homework_import(message: Message, state: FSMContext):
+    """Отмена текущего действия без потери сохранённых заданий"""
+    print(f"DEBUG: abort_homework вызван")
+    current_state = await state.get_state()
+    print(f"DEBUG: current_state = {current_state}")
+
+    # Если мы в процессе добавления нового задания
+    if current_state in [
+        HomeworkImportStates.waiting_for_manual_subject,
+        HomeworkImportStates.waiting_for_task_text,
+        HomeworkImportStates.waiting_for_manual_deadline,
+        HomeworkImportStates.waiting_for_photo,
+        HomeworkImportStates.waiting_for_photo_subject,
+        HomeworkImportStates.waiting_for_photo_deadline,
+        HomeworkImportStates.waiting_for_next_action,
+        HomeworkImportStates.waiting_for_method_selection
+    ]:
+        # Возвращаемся к списку заданий, НЕ ОЧИЩАЯ homeworks!
+        data = await state.get_data()
+        homeworks = data.get('homeworks', [])
+
+        if homeworks:
+            await state.set_state(HomeworkImportStates.waiting_for_next_action)
+            await message.answer(
+                f"✅ Отменено. Возвращаемся к списку заданий.\n\n"
+                f"📊 В списке {len(homeworks)} заданий.\n\n"
+                "Что хочешь сделать?",
+                reply_markup=get_next_action_keyboard()
+            )
+        else:
+            # Нет заданий — очищаем всё
+            await state.clear()
+            await message.answer(
+                "❌ Добавление задания отменено.\n\n"
+                "Чтобы начать заново: /import_homework"
+            )
+        return
+
+    # Если не в процессе добавления и нет заданий — очищаем всё
+    data = await state.get_data()
+    homeworks = data.get('homeworks', [])
+
+    if not homeworks:
+        await state.clear()
+        await message.answer("❌ Действие отменено.", reply_markup=ReplyKeyboardRemove())
+    else:
+        # Есть задания — возвращаемся к списку
+        await state.set_state(HomeworkImportStates.waiting_for_next_action)
+        await message.answer(
+            f"✅ Отменено. Возвращаемся к списку заданий.\n\n"
+            f"📊 В списке {len(homeworks)} заданий.\n\n"
+            "Что хочешь сделать?",
+            reply_markup=get_next_action_keyboard()
+        )

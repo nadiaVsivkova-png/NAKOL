@@ -69,33 +69,53 @@ async def show_session_schedule(message: Message, state: FSMContext):
     # Получаем пользователя из БД
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-    close_db(db)
 
-    # Получаем расписание в зависимости от роли пользователя
+    # Определяем, какое расписание сессии показывать
+    sessions = []
+    schedule_type = ""
+
     if user.role == "starosta" and user.group_id:
+        # Староста смотрит расписание сессии группы
+        sessions = get_session_schedule(group_id=user.group_id)
+        schedule_type = "📚 Расписание сессии для группы"
+    elif user.group_id:
+        # Обычный участник группы - смотрит расписание сессии группы
         sessions = get_session_schedule(group_id=user.group_id)
         schedule_type = "📚 Расписание сессии для группы"
     else:
+        # Пользователь без группы - смотрит своё личное расписание сессии
         sessions = get_session_schedule(user_id=user.id)
         schedule_type = "👤 Моё расписание сессии"
 
+    close_db(db)
+
     # Проверяем, есть ли расписание
     if not sessions:
-        await message.answer(
-            f"{schedule_type}\n\n"
-            "📭 Расписание сессии не загружено.\n\n"
-            "Загрузите расписание через команду:\n"
-            "/import_session"
-        )
+        if user.group_id:
+            await message.answer(
+                f"{schedule_type}\n\n"
+                "📭 Расписание сессии группы не загружено.\n\n"
+                "Обратитесь к старосте, чтобы он загрузил расписание\n"
+                )
+        else:
+            await message.answer(
+                f"{schedule_type}\n\n"
+                "📭 Расписание сессии не загружено.\n\n"
+                "Загрузите расписание через команду:\n"
+                "/import_session"
+            )
         return
 
     # Формируем ответ
     response = f"{schedule_type}\n\n"
     response += "📋 Список экзаменов и занятий:\n\n"
 
+    # Сортируем по дате
+    sessions_sorted = sorted(sessions, key=lambda x: extract_session_data(x)['date'])
+
     current_date = None
 
-    for session in sessions:
+    for session in sessions_sorted:
         # Извлекаем данные универсальным способом
         data = extract_session_data(session)
 

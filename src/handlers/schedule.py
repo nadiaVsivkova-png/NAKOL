@@ -79,7 +79,7 @@ def build_schedule_message(lessons, title):
     if not lessons:
         return None
 
-    response = f"{title}\n\n📋 Список занятий:\n\n"
+    response = f"{title}\n\n"
     current_weekday = None
 
     for lesson in lessons:
@@ -108,64 +108,57 @@ async def show_schedule(message: Message, state: FSMContext):
 
     db = get_db()
     user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-    close_db(db)
 
-    if not user:
-        await message.answer("❌ Вы не зарегистрированы. Используйте /start")
-        return
+    # Определяем, какое расписание показывать
+    both_weeks = []
+    even_week = []
+    odd_week = []
+    schedule_type = ""
 
-    # Получаем расписание
     if user.role == "starosta" and user.group_id:
+        # Староста смотрит расписание группы
         both_weeks, even_week, odd_week = get_schedule(group_id=user.group_id)
-        schedule_type = "📚 Расписание для группы"
+        schedule_type = "📚 Расписание группы"
+    elif user.group_id:
+        # Обычный участник группы - смотрит расписание группы
+        both_weeks, even_week, odd_week = get_schedule(group_id=user.group_id)
+        schedule_type = "📚 Расписание группы"
     else:
+        # Пользователь без группы - смотрит своё личное расписание
         both_weeks, even_week, odd_week = get_schedule(user_id=user.id)
         schedule_type = "👤 Моё расписание"
 
+    close_db(db)
+
     # Проверяем, есть ли вообще расписание
     if not both_weeks and not even_week and not odd_week:
-        await message.answer(
-            f"{schedule_type}\n\n"
-            "📭 Расписание не загружено.\n\n"
-            "Загрузите расписание через команду:\n"
-            "/import_schedule"
-        )
+        if user.group_id:
+            await message.answer(
+                f"{schedule_type}\n\n"
+                "📭 Расписание группы не загружено.\n\n"
+                "Обратитесь к старосте, чтобы он загрузил расписание\n"
+            )
+        else:
+            await message.answer(
+                f"{schedule_type}\n\n"
+                "📭 Расписание не загружено.\n\n"
+                "Загрузите расписание через команду:\n"
+                "/import_schedule"
+            )
         return
 
-    # Формируем сообщение с предметами, которые есть каждую неделю
-    if both_weeks:
-        both_message = build_schedule_message(both_weeks, f"{schedule_type} (каждая неделя)")
-        if both_message:
-            await message.answer(both_message)
-
     # Формируем сообщение для чётной недели
-    # Добавляем в чётную неделю предметы, которые есть каждую неделю
     even_week_full = both_weeks + even_week
-    even_week_full.sort(key=lambda x: (x['weekday'], x['start_time']))
-
     if even_week_full:
+        even_week_full.sort(key=lambda x: (x['weekday'], x['start_time']))
         even_message = build_schedule_message(even_week_full, f"{schedule_type} (ЧЁТНАЯ неделя)")
         if even_message:
             await message.answer(even_message)
 
     # Формируем сообщение для нечётной недели
-    # Добавляем в нечётную неделю предметы, которые есть каждую неделю
     odd_week_full = both_weeks + odd_week
-    odd_week_full.sort(key=lambda x: (x['weekday'], x['start_time']))
-
     if odd_week_full:
+        odd_week_full.sort(key=lambda x: (x['weekday'], x['start_time']))
         odd_message = build_schedule_message(odd_week_full, f"{schedule_type} (НЕЧЁТНАЯ неделя)")
         if odd_message:
             await message.answer(odd_message)
-
-        if schedule['classroom'] and schedule['classroom'] != "не указана":
-            response += f"   🏛 Аудитория: {schedule['classroom']}\n"
-
-        response += "\n"
-
-    await message.answer(response)
-    await message.answer(response)
-    # Если нет предметов ни на одной неделе (только общие)
-    if not even_week and not odd_week and both_weeks:
-        # Уже отправили общее сообщение, ничего не делаем
-        pass

@@ -1,12 +1,13 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src", "database"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'database'))
 
 from db import get_db
 from models import Meme
 
-INPUT_FILE = os.path.join(os.path.dirname(__file__), "meme_ids.txt")
+INPUT_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'memes', 'meme_ids.txt')
+
 
 TEXT_MEMES = [
     "Не жди идеального момента. Бери текущий и делай его идеальным.",

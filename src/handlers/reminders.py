@@ -370,7 +370,7 @@ async def reminders_on(message: Message):
     await message.answer("✅ Включены напоминания по умолчанию (за 24ч и за 3ч)" if result else "❌ Ошибка")
 
 
-@router.message(Command("remind"))
+@router.message(Command("reminder"))
 async def show_remind_commands(message: Message):
     """Показывает все доступные команды для управления напоминаниями"""
     response = (
@@ -388,7 +388,7 @@ async def show_remind_commands(message: Message):
         "• /reminder_settings — текущие настройки\n"
         "• /reminders_on — включить автоуведомления (24ч и 3ч)\n"
         "• /reminders_off — отключить все напоминания\n"
-        "• /remind — показать эту справку\n\n"
+        "• /reminder — показать эту справку\n\n"
         "💡 Доступные часы: 1, 2, 3, 4, 5, 6, 8, 10, 12, 24, 48, 72\n\n"
         "📌 Пример: /add_reminder 6 — напомнить за 6 часов до дедлайна"
     )

@@ -16,6 +16,24 @@ from database.db import create_schedule
 router = Router()
 
 
+def can_import_schedule(user) -> tuple:
+    """
+    Проверяет, может ли пользователь импортировать расписание.
+    Возвращает (can_import, message)
+    """
+    if user.role == "starosta" and user.group_id:
+        # Староста может импортировать расписание для группы
+        return True, None
+    elif user.role == "student":
+        # Студент может импортировать только если он НЕ в группе
+        if user.group_id:
+            return False, "❌ Вы состоите в группе. Расписание загружает староста.\n\nОбратитесь к старосте вашей группы."
+        else:
+            return True, None
+    else:
+        return True, None
+
+
 # ==================== FSM СОСТОЯНИЯ ДЛЯ ИМПОРТА РАСПИСАНИЯ ====================
 class ScheduleImportStates(StatesGroup):
     waiting_for_photo = State()
@@ -76,7 +94,17 @@ def get_next_action_keyboard():
 
 # ==================== КОМАНДА /import_schedule ====================
 @router.message(Command("import_schedule"))
-async def import_schedule(message: Message):
+async def import_schedule(message: Message, state: FSMContext):
+    # Проверка пользователя
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_schedule(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await message.answer("Каким способом хочешь импортировать расписание?",
                          reply_markup=schedule_keyboard)
 
@@ -84,6 +112,16 @@ async def import_schedule(message: Message):
 # ==================== EXCEL ====================
 @router.message(F.text == "📊Загрузить Excel-файл(рекомендую)")
 async def handle_excel(message: Message, state: FSMContext):
+    # Проверка пользователя
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_schedule(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await state.set_state(ScheduleImportStates.waiting_for_excel)
     await message.answer("Ты выбрал Excel-файл. Скачай шаблон и заполни его: /template\n\n"
                          "После заполнения просто загрузи файл сюда.",
@@ -277,8 +315,23 @@ async def switch_to_manual(callback: CallbackQuery, state: FSMContext):
 # ==================== ФОТО (OCR) ====================
 @router.message(F.text == "📸Отправить фото(распознаю текст)")
 async def handle_photo_schedule(message: Message, state: FSMContext):
+    # Проверка пользователя
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_schedule(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await state.set_state(ScheduleImportStates.waiting_for_photo)
     await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.\n\n"
+                         "Пример для отправки фото:\n"
+                         "пн 09:00-10:30 Математика\n"
+                         "вт 9:00-10:30 Физика even\n"
+                         "ср 9-10 Информатика odd\n"
+                         "Представь, что ты заскринил это расписание и отправил боту :)"
                          "❌ /cancel - отменить",
                          reply_markup=ReplyKeyboardRemove())
 
@@ -347,6 +400,16 @@ async def process_photo_schedule(message: Message, state: FSMContext):
 # ==================== РУЧНОЙ ВВОД ====================
 @router.message(F.text == "✍️Ввести расписание вручную")
 async def start_manual_input(message: Message, state: FSMContext):
+    # Проверка пользователя
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_schedule(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await state.clear()
     await state.update_data(lessons=[])
     await state.set_state(ScheduleManualStates.waiting_for_day)

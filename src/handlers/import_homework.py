@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from database.db import get_db, close_db
-from database.models import User, Subject, Group, Task, GroupMember
+from database.models import User, Subject, Group, Task, GroupMember, UserTask
 from database.group_functions import create_task, get_or_create_subject
 from datetime import datetime
 import asyncio
@@ -549,7 +549,7 @@ async def send_single_task_to_group(task_id: int, group_telegram_id: int, bot: B
 
 @router.message(Command("send_to_group"))
 async def send_to_group_command(message: Message, state: FSMContext):
-    """Отправляет задания каждому участнику группы в личку"""
+    """Отправляет задания каждому участнику группы и создает user_tasks"""
     data = await state.get_data()
     task_ids = data.get('saved_task_ids', [])
 
@@ -572,9 +572,9 @@ async def send_to_group_command(message: Message, state: FSMContext):
 
     # Получаем всех участников группы
     members = db.query(User).join(GroupMember).filter(GroupMember.group_id == group_id).all()
-    close_db(db)
 
     if not members:
+        close_db(db)
         await message.answer("❌ В группе нет участников.")
         return
 
@@ -582,14 +582,16 @@ async def send_to_group_command(message: Message, state: FSMContext):
 
     sent_count = 0
     failed_count = 0
+    user_tasks_created = 0
 
     for task_id in task_ids:
         # Получаем задание
-        db = get_db()
         task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            continue
+
         subject = db.query(Subject).filter(Subject.id == task.subject_id).first()
         subject_name = subject.name if subject else "Неизвестный предмет"
-        close_db(db)
 
         deadline_str = task.deadline.strftime("%d.%m.%Y")
         task_text = task.title
@@ -602,7 +604,7 @@ async def send_to_group_command(message: Message, state: FSMContext):
             f"📅 Дедлайн: {deadline_str}\n"
         )
 
-        # СОЗДАЁМ КЛАВИАТУРУ С КНОПКОЙ "ПОКАЗАТЬ ФОТО" (если есть фото)
+        # Клавиатура с кнопкой "Показать фото"
         keyboard = None
         if task.photo_file_id:
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -612,11 +614,11 @@ async def send_to_group_command(message: Message, state: FSMContext):
                 )]
             ])
 
-        # Отправляем каждому участнику
+        # Отправляем каждому участнику и создаем user_task
         for member in members:
             try:
+                # Отправляем сообщение в зависимости от наличия фото
                 if task.photo_file_id:
-                    # Если есть фото — отправляем фото + текст + кнопка
                     await message.bot.send_photo(
                         chat_id=member.telegram_id,
                         photo=task.photo_file_id,
@@ -625,25 +627,47 @@ async def send_to_group_command(message: Message, state: FSMContext):
                         parse_mode="Markdown"
                     )
                 else:
-                    # Если фото нет — только текст + кнопка
                     await message.bot.send_message(
                         chat_id=member.telegram_id,
                         text=message_text,
                         reply_markup=keyboard,
                         parse_mode="Markdown"
                     )
+
+                # СОЗДАЕМ ЗАПИСЬ В user_tasks ДЛЯ УЧАСТНИКА
+
+                # Проверяем, нет ли уже такой записи (чтобы не дублировать)
+                existing = db.query(UserTask).filter(
+                    UserTask.user_id == member.id,
+                    UserTask.task_id == task_id
+                ).first()
+
+                if not existing:
+                    new_user_task = UserTask(
+                        user_id=member.id,
+                        task_id=task_id,
+                        status="active"  # статус по умолчанию - не выполнено
+                    )
+                    db.add(new_user_task)
+                    user_tasks_created += 1
+
                 sent_count += 1
+
             except Exception as e:
                 failed_count += 1
                 print(f"Ошибка отправки участнику {member.telegram_id}: {e}")
 
+        db.commit()  # Сохраняем все user_tasks после каждого задания
         await asyncio.sleep(0.5)  # задержка между заданиями
+
+    close_db(db)
 
     await message.answer(
         f"✅ Отправлено!\n\n"
         f"📊 Заданий: {len(task_ids)}\n"
         f"👥 Участников: {len(members)}\n"
-        f"📬 Успешно: {sent_count}\n"
+        f"📬 Успешно отправлено сообщений: {sent_count}\n"
+        f"📝 Создано записей user_tasks: {user_tasks_created}\n"
         f"❌ Ошибок: {failed_count}"
     )
 
@@ -654,9 +678,7 @@ async def send_to_group_command(message: Message, state: FSMContext):
 @router.message(Command("abort_homework"))
 async def abort_homework_import(message: Message, state: FSMContext):
     """Отмена текущего действия без потери сохранённых заданий"""
-    print(f"DEBUG: abort_homework вызван")
     current_state = await state.get_state()
-    print(f"DEBUG: current_state = {current_state}")
 
     # Если мы в процессе добавления нового задания
     if current_state in [

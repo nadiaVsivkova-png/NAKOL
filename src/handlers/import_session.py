@@ -9,8 +9,26 @@ from aiogram.fsm.state import State, StatesGroup
 from database.db import create_session_schedule, get_db, close_db
 from database.models import User, Subject
 from datetime import datetime
-#from database.group_functions import get_or_create_subject
+# from database.group_functions import get_or_create_subject
 from database.group_functions import get_or_create_subject
+
+
+def can_import_session(user) -> tuple:
+    """
+    Проверяет, может ли пользователь импортировать расписание сессии.
+    Возвращает (can_import, message)
+    """
+    if user.role == "starosta" and user.group_id:
+        # Староста может импортировать расписание для группы
+        return True, None
+    elif user.role == "student":
+        # Студент может импортировать только если он НЕ в группе
+        if user.group_id:
+            return False, "❌ Вы состоите в группе. Расписание сессии загружает староста.\n\nОбратитесь к старосте вашей группы."
+        else:
+            return True, None
+    else:
+        return True, None
 
 
 def format_date(date_value):
@@ -50,13 +68,31 @@ schedule_keyboard = ReplyKeyboardMarkup(
 
 
 @router.message(Command("import_session"))
-async def import_session(message: Message):
+async def import_session(message: Message, state: FSMContext):
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_session(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await message.answer("Каким способом хочешь импортировать расписание сессии?",
                          reply_markup=schedule_keyboard)
 
 
 @router.message(F.text == "📊Загрузить Excel-файл")
 async def handle_excel(message: Message, state: FSMContext):
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_session(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await state.set_state(SessionImportStates.waiting_for_excel)
     await message.answer("Ты выбрал Excel-файл. Скачай шаблон и заполни его: /session\n\n"
                          "После заполнения просто загрузи файл сюда.",
@@ -82,6 +118,15 @@ async def answer_download(message: Message):
 # ==================== ФОТО (OCR) С FSM ====================
 @router.message(F.text == "📸Отправить фото расписания сессии(распознаю текст)")
 async def handle_photo_schedule(message: Message, state: FSMContext):
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_session(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await state.set_state(SessionImportStates.waiting_for_photo)
     await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.\n\n"
                          "❌ /cancel - отменить",
@@ -180,6 +225,15 @@ async def process_photo_session(message: Message, state: FSMContext):
 # ==================== РУЧНОЙ ВВОД ====================
 @router.message(F.text == "✍️Ввести вручную")
 async def start_manual_input(message: Message, state: FSMContext):
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    close_db(db)
+
+    can_import, error_msg = can_import_session(user)
+    if not can_import:
+        await message.answer(error_msg)
+        return
+
     await state.update_data(sessions=[])
     await state.set_state(ManualSessionStates.waiting_for_date)
 

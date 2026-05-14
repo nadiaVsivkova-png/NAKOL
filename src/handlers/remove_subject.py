@@ -150,7 +150,7 @@ async def process_confirmation(callback: CallbackQuery, state: FSMContext):
         )
     else:
         if deleted_count == 0:
-            tasks_message = "не было будущих заданий"
+            tasks_message = "Не было будущих заданий"
         else:
             tasks_message = f"удалено будущих заданий: {deleted_count}"
         await callback.message.edit_text(

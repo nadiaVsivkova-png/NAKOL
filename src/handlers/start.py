@@ -1,10 +1,11 @@
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'database'))
-from user_functions import get_user
+from user_functions import get_user, create_user
+from group_functions import create_group
 
 router = Router()
 
@@ -53,7 +54,8 @@ MEMBER_COMMANDS = (
     "/done – отметить задание выполненным\n"
     "/free_time – предложить срочные задания\n\n"
     "📥 <b>Расписание</b>\n"
-    "/schedule – посмотреть расписание\n\n"
+    "/schedule – посмотреть расписание\n"
+    "/session_schedule – посмотреть расписание сессии\n\n"
     "🔔 <b>Уведомления и напоминания</b>\n"
     "/reminder – настроить напоминания\n\n"
     "📌 <b>Прочее</b>\n"
@@ -78,3 +80,39 @@ async def show_commands(message: Message):
         await message.answer(f"📋 Доступные команды:\n\n{INDIVIDUAL_COMMANDS}", parse_mode="HTML")
     else:
         await message.answer(f"📋 Доступные команды:\n\n{STAROSTA_COMMANDS}", parse_mode="HTML")
+
+@router.message(lambda m: m.text == "Я староста")
+async def starosta_handler(message: Message):
+    create_user(
+        telegram_id=message.from_user.id,
+        username=message.from_user.username or message.from_user.first_name,
+        role="starosta"
+    )
+    group_code = create_group(
+        group_name=f"Группа {message.from_user.first_name}",
+        starosta_id=message.from_user.id
+    )
+    if group_code:
+        await message.answer(
+            f"🎉 Ты зарегистрирована как староста!\n\n"
+            f"Код твоей группы: {group_code}\n\n"
+            f"Поделись этим кодом с участниками группы.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        await message.answer("Чтобы получить список всех команд, введи /commands")
+    else:
+        await message.answer("❌ Ошибка при создании группы. Попробуй снова.", reply_markup=ReplyKeyboardRemove())
+
+@router.message(lambda m: m.text == "Я в группе")
+async def group_member_handler(message: Message):
+    await message.answer("Введи код группы, который прислал староста:", reply_markup=ReplyKeyboardRemove())
+
+@router.message(lambda m: m.text == "Я сам за себя")
+async def individual_handler(message: Message):
+    create_user(
+        telegram_id=message.from_user.id,
+        username=message.from_user.username or message.from_user.first_name,
+        role="individual"
+    )
+    await message.answer("✅ Супер! Ты в индивидуальном режиме", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Чтобы получить список всех команд, введи /commands")

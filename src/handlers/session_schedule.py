@@ -23,19 +23,13 @@ def format_date(date_obj):
 
 
 def extract_session_data(session):
-    """
-    Универсальная функция для извлечения данных из сессии
-    Работает и с объектами, и со словарями
-    """
-    # Проверяем, объект ли это (имеет атрибуты)
+    """Универсальная функция для извлечения данных из сессии"""
     if hasattr(session, 'date'):
-        # Это объект SQLAlchemy
         date_value = session.date
         start_time = getattr(session, 'start_time', '')
         end_time = getattr(session, 'end_time', '')
         classroom = getattr(session, 'classroom', '')
 
-        # Получаем название предмета
         subject_name = "Неизвестно"
         if hasattr(session, 'subject_id') and session.subject_id:
             db = get_db()
@@ -44,7 +38,6 @@ def extract_session_data(session):
                 subject_name = subject.name
             close_db(db)
     else:
-        # Это словарь
         date_value = session.get('date')
         start_time = session.get('start_time', '')
         end_time = session.get('end_time', '')
@@ -66,37 +59,31 @@ async def show_session_schedule(message: Message, state: FSMContext):
 
     await state.clear()
 
-    # Получаем пользователя из БД
     db = get_db()
-    user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
 
-    # Определяем, какое расписание сессии показывать
     sessions = []
     schedule_type = ""
 
     if user.role == "starosta" and user.group_id:
-        # Староста смотрит расписание сессии группы
         sessions = get_session_schedule(group_id=user.group_id)
         schedule_type = "📚 Расписание сессии для группы"
     elif user.group_id:
-        # Обычный участник группы - смотрит расписание сессии группы
         sessions = get_session_schedule(group_id=user.group_id)
         schedule_type = "📚 Расписание сессии для группы"
     else:
-        # Пользователь без группы - смотрит своё личное расписание сессии
         sessions = get_session_schedule(user_id=user.id)
         schedule_type = "👤 Моё расписание сессии"
 
     close_db(db)
 
-    # Проверяем, есть ли расписание
     if not sessions:
         if user.group_id:
             await message.answer(
                 f"{schedule_type}\n\n"
                 "📭 Расписание сессии группы не загружено.\n\n"
                 "Обратитесь к старосте, чтобы он загрузил расписание\n"
-                )
+            )
         else:
             await message.answer(
                 f"{schedule_type}\n\n"
@@ -106,27 +93,21 @@ async def show_session_schedule(message: Message, state: FSMContext):
             )
         return
 
-    # Формируем ответ
     response = f"{schedule_type}\n\n"
     response += "📋 Список экзаменов и занятий:\n\n"
 
-    # Сортируем по дате
     sessions_sorted = sorted(sessions, key=lambda x: extract_session_data(x)['date'])
 
     current_date = None
 
     for session in sessions_sorted:
-        # Извлекаем данные универсальным способом
         data = extract_session_data(session)
-
         date_display = format_date(data['date'])
 
-        # Группировка по датам
         if date_display != current_date:
             current_date = date_display
             response += f"📅 {date_display}\n"
 
-        # Формируем строку времени
         time_str = data['start_time']
         if data['end_time']:
             time_str += f" - {data['end_time']}"
@@ -134,7 +115,6 @@ async def show_session_schedule(message: Message, state: FSMContext):
         response += f"   ⏰ {time_str}\n"
         response += f"   📚 {data['subject_name']}\n"
 
-        # Добавляем аудиторию, если есть
         if data['classroom'] and data['classroom'] != "не указана":
             response += f"   🏛 Аудитория: {data['classroom']}\n"
 

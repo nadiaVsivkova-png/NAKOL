@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 from datetime import datetime, timedelta
 from aiogram import Bot, Router
 from aiogram.types import Message
@@ -7,13 +8,29 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from database.db import get_db, close_db
-from database.models import User, Task, Subject, GroupMember
+from database.models import User, Task, Subject, GroupMember, Meme
 # from database.reminder_functions import was_notification_sent, log_notification, get_reminder_settings, \
 from database.reminder_functions import was_notification_sent, log_notification, get_reminder_settings, \
     set_reminder_settings
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+def get_random_motivation_quote(db) -> str:
+    """Возвращает случайную мотивационную цитату из таблицы Meme (type='text')"""
+    try:
+        # Получаем все текстовые мемы (цитаты)
+        quotes = db.query(Meme).filter(Meme.type == 'text').all()
+
+        if quotes:
+            quote = random.choice(quotes)
+            return f"\n\n💫 {quote.content}"
+        else:
+            return "\n\n💪 Не забудь сделать всё вовремя!"
+    except Exception as e:
+        print(f"Ошибка при получении цитаты: {e}")
+        return "\n\n💪 Не забудь сделать всё вовремя!"
 
 
 # ==================== ФУНКЦИЯ ДЛЯ ОТПРАВКИ УВЕДОМЛЕНИЯ ====================
@@ -23,6 +40,7 @@ async def send_reminder_to_user(bot: Bot, user_telegram_id: int, task: Task, sub
     Отправляет напоминание одному пользователю.
     notif_type: '24h', '3h' или 'custom_Xh'
     """
+    db = get_db()
     deadline_str = task.deadline.strftime("%d.%m.%Y %H:%M")
     time_left = task.deadline - datetime.now()
 
@@ -37,15 +55,21 @@ async def send_reminder_to_user(bot: Bot, user_telegram_id: int, task: Task, sub
     elif notif_type.startswith("custom_"):
         hours = int(notif_type.replace("custom_", "").replace("h", ""))
         time_text = f"{hours} часов"
+    else:
+        time_text = "скоро"
+
+    # Получаем случайную цитату
+    quote_text = get_random_motivation_quote(db)
 
     message_text = (
         f"⏰ Напоминание о дедлайне!\n\n"
         f"📚 Предмет: {subject_name}\n"
         f"📝 Задание: {task.title}\n"
         f"📅 Дедлайн: {deadline_str}\n\n"
-        f"⚠️ Осталось {time_text}!\n"
-        f"Не забудь сделать все вовремя!"
+        f"⚠️ Осталось {time_text}!{quote_text}"
     )
+
+    close_db(db)
 
     try:
         if task.photo_file_id:

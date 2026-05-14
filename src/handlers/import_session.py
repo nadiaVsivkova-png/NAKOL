@@ -559,7 +559,6 @@ async def confirm_schedule(message: Message, state: FSMContext):
     else:
         await message.answer(
             f"✅ Расписание успешно сохранено!\n\n"
-            f"📊 Добавлено занятий: {saved_count}"
             f"📊 Добавлено экзаменов: {saved_count}"
         )
 

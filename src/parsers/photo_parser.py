@@ -32,8 +32,8 @@ def ocr_photo(photo_path):
 
 def normalize_day(day_str: str) -> str:
     """Приводит день недели к стандартному виду"""
+    day_str = day_str.lower().strip()
     day_map = {
-        # Сокращения с опечатками
         'пн': 'пн', 'понедельник': 'пн', 'пон': 'пн',
         'вт': 'вт', 'вторник': 'вт', 'вто': 'вт',
         'ср': 'ср', 'среда': 'ср', 'сред': 'ср',
@@ -41,11 +41,11 @@ def normalize_day(day_str: str) -> str:
         'пт': 'пт', 'пятница': 'пт', 'пят': 'пт',
         'сб': 'сб', 'суббота': 'сб', 'суб': 'сб',
         'вс': 'вс', 'воскресенье': 'вс', 'воск': 'вс',
-        # Ошибки распознавания
+        # Заглавные варианты
         'пн.': 'пн', 'вт.': 'вт', 'ср.': 'ср', 'чт.': 'чт',
         'пт.': 'пт', 'сб.': 'сб', 'вс.': 'вс',
     }
-    return day_map.get(day_str.lower().strip(), None)
+    return day_map.get(day_str, None)
 
 
 def normalize_week_type(week_str: str) -> str:
@@ -98,91 +98,94 @@ def normalize_subject(text: str) -> str:
 
 def parse_schedule_from_photo(text: str) -> List[Dict[str, str]]:
     """
-    Распознаёт расписание из текста, полученного с фото.
-    Поддерживает форматы:
-    - пн 09:00-10:30 Математика
-    - вт 10:45-12:15 Физика even
-    - ср 13:00-14:30 Информатика odd
-    - чт 9:00-10:30 Русский
-    - пт 12:00-13:30 Физра both
+    Простой парсер расписания из фото.
+    Ожидает формат: день время предмет [week_type]
+    Пример: понедельник 09:00-10:30 Математика
+           вторник 10:45-12:15 Физика even
     """
     lessons = []
+
+    # Нормализация текста: убираем лишние переносы строк
+    # Заменяем переносы на пробелы, но сохраняем структуру
     lines = text.split('\n')
 
-    for line in lines:
-        line = line.strip()
-        if not line or len(line) < 5:
-            continue
+    # Список всех возможных дней недели
+    day_map = {
+        'понедельник': 'пн', 'пн': 'пн', 'пон': 'пн',
+        'вторник': 'вт', 'вт': 'вт', 'вто': 'вт',
+        'среда': 'ср', 'ср': 'ср', 'сред': 'ср',
+        'четверг': 'чт', 'чт': 'чт', 'чет': 'чт',
+        'пятница': 'пт', 'пт': 'пт', 'пят': 'пт',
+        'суббота': 'сб', 'сб': 'сб', 'суб': 'сб',
+        'воскресенье': 'вс', 'вс': 'вс', 'вос': 'вс'
+    }
 
-        # 1. Ищем день недели
-        day_match = re.search(r'\b(пн|вт|ср|чт|пт|сб|вс|[а-я]+)\b', line.lower())
-        day = None
-        if day_match:
-            day = normalize_day(day_match.group(1))
+    # Склеиваем строки обратно, но умно
+    # Ищем паттерны в слитном тексте
+    full_text = ' '.join(lines)
 
-        if not day:
-            continue
+    # Разбиваем по дням недели
+    for day_full, day_short in day_map.items():
+        # Ищем паттерн: день + время + предмет
+        pattern = rf'{day_full}\s+(\d{{1,2}}[:.]?\d{{0,2}}?\s*[-–—]\s*\d{{1,2}}[:.]?\d{{0,2}}?)\s+([а-яА-Яa-zA-Z\s]+?)(?=\s*(?:{"|".join(day_map.keys())}|$))'
 
-        # 2. Ищем время (разные форматы)
-        # Формат: 09:00-10:30 или 9:00-10:30 или 09:00 - 10:30
-        time_patterns = [
-            r'(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})',  # 09:00-10:30
-            r'(\d{1,2})[:.](\d{2})\s*[-–—]\s*(\d{1,2})[:.](\d{2})',  # 9:00-10:30
-            r'(\d{1,2})\s*[-–—]\s*(\d{1,2})',  # 9-10 (только часы)
-        ]
+        matches = re.findall(pattern, full_text, re.IGNORECASE)
 
-        start_time = ""
-        end_time = ""
+        for match in matches:
+            time_str = match[0]
+            subject_part = match[1].strip()
 
-        for pattern in time_patterns:
-            match = re.search(pattern, line)
-            if match:
-                if len(match.groups()) == 2 and ':' not in match.group(1):
-                    # Формат: 9-10 (только часы)
-                    start_time = parse_time(f"{match.group(1)}:00")
-                    end_time = parse_time(f"{match.group(2)}:00")
-                elif len(match.groups()) == 2:
-                    # Формат: 09:00-10:30
-                    start_time = parse_time(match.group(1))
-                    end_time = parse_time(match.group(2))
-                elif len(match.groups()) == 4:
-                    # Формат: 9:00-10:30
-                    start_time = parse_time(f"{match.group(1)}:{match.group(2)}")
-                    end_time = parse_time(f"{match.group(3)}:{match.group(4)}")
-                break
+            # Парсим время
+            time_match = re.search(r'(\d{1,2})[:.]?(\d{0,2})\s*[-–—]\s*(\d{1,2})[:.]?(\d{0,2})', time_str)
+            if time_match:
+                start_h = int(time_match.group(1))
+                start_m = int(time_match.group(2)) if time_match.group(2) else 0
+                end_h = int(time_match.group(3))
+                end_m = int(time_match.group(4)) if time_match.group(4) else 0
 
-        if not start_time or not end_time:
-            continue
+                start_time = f"{start_h:02d}:{start_m:02d}"
+                end_time = f"{end_h:02d}:{end_m:02d}"
+            else:
+                continue
 
-        # 3. Ищем тип недели
-        week_type_match = re.search(r'\b(odd|even|both|чётная|нечётная|четная|нечетная)\b', line.lower())
-        week_type = normalize_week_type(week_type_match.group(1) if week_type_match else "")
+            # Парсим тип недели и предмет
+            week_type = "both"
+            subject = subject_part
 
-        # 4. Извлекаем название предмета (всё, что осталось после удаления дня, времени и типа недели)
-        subject_text = line
-        # Удаляем день
-        subject_text = re.sub(r'\b(пн|вт|ср|чт|пт|сб|вс|[а-я]+)\b', '', subject_text, flags=re.IGNORECASE)
-        # Удаляем время
-        subject_text = re.sub(r'(\d{1,2}[:.]\d{2}\s*[-–—]\s*\d{1,2}[:.]\d{2})', '', subject_text)
-        subject_text = re.sub(r'(\d{1,2}\s*[-–—]\s*\d{1,2})', '', subject_text)
-        # Удаляем тип недели
-        subject_text = re.sub(r'\b(odd|even|both|чётная|нечётная|четная|нечетная)\b', '', subject_text,
-                              flags=re.IGNORECASE)
+            # Ищем тип недели в конце строки
+            week_match = re.search(r'\b(even|odd|both|чётная|нечётная|четная|нечетная|каждая)\b', subject,
+                                   re.IGNORECASE)
+            if week_match:
+                week_raw = week_match.group(1).lower()
+                if week_raw in ['even', 'чётная', 'четная']:
+                    week_type = "even"
+                elif week_raw in ['odd', 'нечётная', 'нечетная']:
+                    week_type = "odd"
+                else:
+                    week_type = "both"
+                # Убираем тип недели из названия предмета
+                subject = re.sub(r'\b(even|odd|both|чётная|нечётная|четная|нечетная|каждая)\b', '', subject,
+                                 flags=re.IGNORECASE)
 
-        subject = normalize_subject(subject_text)
+            # Очищаем предмет от лишних пробелов
+            subject = re.sub(r'\s+', ' ', subject).strip()
 
-        if not subject:
-            continue
+            if subject and start_time and end_time:
+                lessons.append({
+                    "day": day_short,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "subject": subject[:50],
+                    "week_type": week_type
+                })
 
-        lessons.append({
-            "day": day,
-            "start_time": start_time,
-            "end_time": end_time,
-            "subject": subject,
-            "week_type": week_type
-        })
+    # Убираем дубликаты
+    unique = []
+    for l in lessons:
+        if l not in unique:
+            unique.append(l)
 
-    return lessons
+    return unique
 
 
 @dataclass

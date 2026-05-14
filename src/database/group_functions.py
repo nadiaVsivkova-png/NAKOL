@@ -1,12 +1,15 @@
 import random
 import string
 from db import get_db
-from models import Group, GroupMember, User, Subject, Task, UserTask
+from models import Group, GroupMember, User, Subject, Task, UserTask, Schedule, SessionSchedule
 from datetime import datetime
 import os
+
+
 def generate_group_code(length=6):
     """Генерирует случайный код группы"""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
 
 def create_group(group_name: str, starosta_id: int):
     db = get_db()
@@ -16,7 +19,7 @@ def create_group(group_name: str, starosta_id: int):
             existing = db.query(Group).filter(Group.group_code == group_code).first()
             if not existing:
                 break
-        
+
         group = Group(
             group_code=group_code,
             group_name=group_name,
@@ -25,29 +28,30 @@ def create_group(group_name: str, starosta_id: int):
         db.add(group)
         db.commit()
         db.refresh(group)
-        
+
         starosta = db.query(User).filter(User.telegram_id == starosta_id).first()
         if starosta:
             starosta.role = "starosta"
             starosta.group_id = group.id
             db.commit()
-            
+
             member = GroupMember(
                 group_id=group.id,
                 user_id=starosta.id
             )
             db.add(member)
             db.commit()
-        
+
         print(f"Группа '{group_name}' создана! Код приглашения: {group_code}")
         db.close()
         return group_code
-        
+
     except Exception as e:
         print(f"Ошибка при создании группы: {e}")
         db.rollback()
         db.close()
         return None
+
 
 def get_group_by_code(group_code: str):
     """возвращает группу по уникальному коду"""
@@ -65,6 +69,7 @@ def get_group_by_code(group_code: str):
         db.close()
         return None
 
+
 def get_group_by_id(group_id: int):
     """возвращает группу по id (хранится в таблицах)"""
     db = get_db()
@@ -77,6 +82,7 @@ def get_group_by_id(group_id: int):
         db.close()
         return None
 
+
 def add_user_to_group(user_id: int, group_id: int):
     """добавляет пользователя в группу по id из баз данных"""
     db = get_db()
@@ -85,18 +91,18 @@ def add_user_to_group(user_id: int, group_id: int):
             GroupMember.user_id == user_id,
             GroupMember.group_id == group_id
         ).first()
-        
+
         if existing:
             print(f"Пользователь уже в группе")
             db.close()
             return False
-        
+
         member = GroupMember(
             group_id=group_id,
             user_id=user_id
         )
         db.add(member)
-        
+
         user = db.query(User).filter(User.id == user_id).first()
         if user:
             if user.role == "individual":
@@ -106,12 +112,13 @@ def add_user_to_group(user_id: int, group_id: int):
         print(f"Пользователь добавлен в группу")
         db.close()
         return True
-        
+
     except Exception as e:
         print(f"Ошибка при добавлении в группу: {e}")
         db.rollback()
         db.close()
         return False
+
 
 def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
     """добавляем пользователя по us в телеграмме и коду группы с использование функции add_user_to_group"""
@@ -122,20 +129,21 @@ def add_user_to_group_by_telegram(telegram_id: int, group_code: str):
             print(f"Пользователь не найден")
             db.close()
             return False
-        
+
         group = db.query(Group).filter(Group.group_code == group_code).first()
         if not group:
             print(f"Группа с кодом {group_code} не найдена")
             db.close()
             return False
-        
+
         db.close()
         return add_user_to_group(user.id, group.id)
-        
+
     except Exception as e:
         print(f"Ошибка: {e}")
         db.close()
         return False
+
 
 def get_group_members(group_id: int):
     """возвращает всех пользователей группы по group_id"""
@@ -150,6 +158,7 @@ def get_group_members(group_id: int):
         db.close()
         return []
 
+
 def get_user_groups(user_id: int):
     """возвращает все группы пользователя по id из таблиц"""
     db = get_db()
@@ -161,6 +170,7 @@ def get_user_groups(user_id: int):
         print(f"Ошибка: {e}")
         db.close()
         return []
+
 
 def is_user_in_group(user_id: int, group_id: int):
     """проверяет существует ли пользователь в группе"""
@@ -177,8 +187,9 @@ def is_user_in_group(user_id: int, group_id: int):
         db.close()
         return False
 
+
 def delete_subject(subject_id: int, user_id=None, group_id=None):
-    """Удаляет предмет и все его задания"""
+    """Удаляет предмет и всё связанное с ним (задания, расписание, расписание сессии)"""
     db = get_db()
     try:
         subject = db.query(Subject).filter(Subject.id == subject_id).first()
@@ -196,21 +207,42 @@ def delete_subject(subject_id: int, user_id=None, group_id=None):
             db.close()
             return None
 
-        deleted_tasks = db.query(Task).filter(
+        # Считаем количество будущих заданий для отчёта
+        deleted_tasks_count = db.query(Task).filter(
             Task.subject_id == subject_id,
             Task.deadline > datetime.now()
-        ).all()
-        deleted_count = len(deleted_tasks)
+        ).count()
 
-        for task in deleted_tasks:
-            db.delete(task)
+        # Находим все задания этого предмета
+        tasks = db.query(Task).filter(Task.subject_id == subject_id).all()
+        task_ids = [t.id for t in tasks]
 
+        # Удаляем user_tasks (связи пользователь-задание)
+        if task_ids:
+            db.query(UserTask).filter(UserTask.task_id.in_(task_ids)).delete(synchronize_session=False)
+            print(f"Удалено user_tasks: {len(task_ids)}")
+
+        # Удаляем задания (tasks)
+        db.query(Task).filter(Task.subject_id == subject_id).delete(synchronize_session=False)
+        print(f"Удалено заданий: {deleted_tasks_count}")
+
+        # Удаляем записи из расписания (Schedule)
+        deleted_schedule = db.query(Schedule).filter(Schedule.subject_id == subject_id).delete(
+            synchronize_session=False)
+        print(f"Удалено записей из расписания: {deleted_schedule}")
+
+        # Удаляем записи из расписания сессии (SessionSchedule)
+        deleted_session = db.query(SessionSchedule).filter(SessionSchedule.subject_id == subject_id).delete(
+            synchronize_session=False)
+        print(f"Удалено записей из расписания сессии: {deleted_session}")
+
+        # Удаляем сам предмет
         db.delete(subject)
         db.commit()
 
-        print(f"Предмет удалён. Удалено будущих заданий: {deleted_count}")
+        print(f"Предмет '{subject.name}' удалён вместе со всем связанным содержимым")
         db.close()
-        return deleted_count
+        return deleted_tasks_count
 
     except Exception as e:
         print(f"Ошибка при удалении предмета: {e}")
@@ -219,8 +251,9 @@ def delete_subject(subject_id: int, user_id=None, group_id=None):
         return None
 
 
-MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024  
-MAX_TASKS_WITH_PHOTO = 200           
+MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
+MAX_TASKS_WITH_PHOTO = 200
+
 
 def check_storage_limit(group_id=None, user_id=None) -> tuple[bool, str]:
     """Проверяет, не превышен ли лимит хранилища перед сохранением фото"""
@@ -246,6 +279,7 @@ def check_storage_limit(group_id=None, user_id=None) -> tuple[bool, str]:
     finally:
         db.close()
 
+
 def create_task(subject_id: int, title: str, deadline, group_id=None, created_by: int = None, photo_file_id=None):
     """Создаёт задание и привязывает к пользователю"""
     """Создаёт задание. photo_file_id не обязателен, по умолчанию None"""
@@ -253,7 +287,7 @@ def create_task(subject_id: int, title: str, deadline, group_id=None, created_by
         allowed, reason = check_storage_limit(group_id=group_id, user_id=created_by)
         if not allowed:
             print(f"Отказ в сохранении фото: {reason}")
-            return None, reason  
+            return None, reason
 
     db = get_db()
     try:
@@ -268,7 +302,7 @@ def create_task(subject_id: int, title: str, deadline, group_id=None, created_by
         db.add(task)
         db.commit()
         db.refresh(task)
-        
+
         # привязываем задание к пользователю
         if created_by:
             user = db.query(User).filter(User.id == created_by).first()
@@ -280,17 +314,17 @@ def create_task(subject_id: int, title: str, deadline, group_id=None, created_by
                 )
                 db.add(user_task)
                 db.commit()
-        
+
         print(f"Задание '{title}' создано (id={task.id})")
         db.close()
-        return task, None 
+        return task, None
     except Exception as e:
         print(f"Ошибка при создании задания: {e}")
         db.rollback()
         db.close()
         return None, str(e)
-        
-        
+
+
 def get_task_photo(task_id: int):
     """возвращает задание с фото по id задания"""
     db = get_db()
@@ -304,6 +338,7 @@ def get_task_photo(task_id: int):
         print(f"Ошибка при получении фото задания: {e}")
         db.close()
         return None
+
 
 def get_user_tasks(user_id: int):
     """возвращает список всех заданий пользователя по его id из таблиц"""
@@ -332,6 +367,7 @@ def get_user_tasks(user_id: int):
         print(f"Ошибка при получении заданий: {e}")
         db.close()
         return []
+
 
 def get_or_create_subject(name: str, group_id=None, user_id=None):
     """возвращает id предмета если он уже есть, если нет создает для конкретного пользователя/группы и возвращает его id"""

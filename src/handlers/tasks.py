@@ -59,7 +59,7 @@ async def cmd_list(message: Message):
                 "subject": subject.name,
                 "title": task.title,
                 "deadline": task.deadline,
-                "has_photo": hasattr(task, 'photo_file_id') and task.photo_file_id is not None
+                "photo_file_id": task.photo_file_id if hasattr(task, 'photo_file_id') else None
             }
             
             if task.deadline <= tomorrow:
@@ -74,29 +74,61 @@ async def cmd_list(message: Message):
         if urgent:
             response += "🔴 <b>СРОЧНЫЕ (до завтра):</b>\n"
             for t in urgent:
-                photo_icon = " 📎" if t["has_photo"] else ""
-                response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')}){photo_icon}\n"
+                response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')})\n"
             response += "\n"
         
         if this_week:
             response += "🟡 <b>НА ЭТОЙ НЕДЕЛЕ:</b>\n"
             for t in this_week:
-                photo_icon = " 📎" if t["has_photo"] else ""
-                response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')}){photo_icon}\n"
+                response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')})\n"
             response += "\n"
         
         if other:
             response += "🟢 <b>ОСТАЛЬНЫЕ:</b>\n"
             for t in other:
-                photo_icon = " 📎" if t["has_photo"] else ""
-                response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')}){photo_icon}\n"
+                response += f"  ID {t['id']}: {t['subject']} – {t['title']} (до {t['deadline'].strftime('%d.%m')})\n"
+        
+        # создаём кнопки для заданий с фото
+        photo_tasks = [t for t in urgent + this_week + other if t["photo_file_id"]]
+        keyboard = None
+        if photo_tasks:
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+            for t in photo_tasks:
+                keyboard.inline_keyboard.append([
+                    InlineKeyboardButton(
+                        text=f"📸 {t['subject']} – {t['title']}",
+                        callback_data=f"show_photo_{t['id']}"
+                    )
+                ])
         
         response += "\n✏️ Чтобы отметить задание выполненным, введи /done"
         
-        await message.answer(response, parse_mode="HTML")
+        await message.answer(response, parse_mode="HTML", reply_markup=keyboard)
         
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
+    finally:
+        db.close()
+
+
+@router.callback_query(F.data.startswith("show_photo_"))
+async def show_photo_callback(callback: CallbackQuery):
+    """показывает фото задания при нажатии на кнопку"""
+    task_id = int(callback.data.replace("show_photo_", ""))
+    db = get_db()
+    
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task and task.photo_file_id:
+            await callback.message.answer_photo(
+                task.photo_file_id,
+                caption=f"📸 {task.title}"
+            )
+            await callback.answer()
+        else:
+            await callback.answer("Фото не найдено")
+    except Exception as e:
+        await callback.answer(f"Ошибка: {e}")
     finally:
         db.close()
 
@@ -128,6 +160,8 @@ async def cmd_free_time(message: Message):
         response = "⏳ У тебя есть время? Займись вот этим:\n\n"
         for user_task, task, subject in user_tasks:
             response += f"• {subject.name} – {task.title} (дедлайн {task.deadline.strftime('%d.%m')})\n"
+            if hasattr(task, 'photo_file_id') and task.photo_file_id:
+                response += f"  📸 фото прикреплено\n"
         
         await message.answer(response)
         

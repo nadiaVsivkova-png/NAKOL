@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OUTPUT_FILE = "meme_ids.txt"
+OUTPUT_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'memes', 'meme_ids.txt')
 
 logging.basicConfig(level=logging.WARNING)  
 

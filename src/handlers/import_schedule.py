@@ -326,14 +326,15 @@ async def handle_photo_schedule(message: Message, state: FSMContext):
         return
 
     await state.set_state(ScheduleImportStates.waiting_for_photo)
-    await message.answer("Отправь фото расписания. Важно: фото должно быть чётким.\n\n"
-                         "Пример для отправки фото:\n"
-                         "пн 09:00-10:30 Математика\n"
-                         "вт 9:00-10:30 Физика even\n"
-                         "ср 9-10 Информатика odd\n"
-                         "Представь, что ты заскринил это расписание и отправил боту :)"
-                         "❌ /cancel - отменить",
-                         reply_markup=ReplyKeyboardRemove())
+    await message.answer(
+        "📸 Отправь фото расписания. Важно: фото должно быть чётким.\n"
+        "Пример в каком формате должно быть расписание на фото:\n"
+        "понедельник 09:00-10:30 Математика\n"
+        "вторник 10:45-12:15 Физика even\n"
+        "итд.. (представь, что ты заскринил этот текст :))"
+        "❌ /cancel - отменить",
+        reply_markup=ReplyKeyboardRemove()
+    )
 
 
 @router.message(ScheduleImportStates.waiting_for_photo, F.photo)
@@ -348,51 +349,65 @@ async def process_photo_schedule(message: Message, state: FSMContext):
 
     try:
         recognized_text = ocr_photo(temp_path)
+
         if not recognized_text:
             await message.answer("❌ Текст не распознан")
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
             return
+
+        await message.answer(f"📝 OCR распознал:\n\n{recognized_text[:500]}")
 
         lessons = parse_schedule_from_photo(recognized_text)
+
         if not lessons:
             await message.answer("❌ Не удалось распознать расписание")
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
             return
 
-        db = get_db()
-        user = db.query(User).filter(User.telegram_id == str(message.from_user.id)).first()
-        close_db(db)
+        # Сохраняем распарсенные уроки и путь к фото в состояние
+        await state.update_data(pending_lessons=lessons, temp_photo_path=temp_path)
 
-        saved_count = 0
-        for lesson in lessons:
-            if user.role == "starosta" and user.group_id:
-                subject_id = get_or_create_subject(lesson['subject'], group_id=user.group_id)
-                group_id = user.group_id
-                user_id = None
-            else:
-                subject_id = get_or_create_subject(lesson['subject'], user_id=user.id)
-                group_id = None
-                user_id = user.id
+        # Формируем сообщение с предпросмотром
+        preview_text = "📋 **Предпросмотр расписания:**\n\n"
 
-            if subject_id is None:
-                continue
+        for i, lesson in enumerate(lessons, 1):
+            preview_text += f"{i}. 📅 {lesson['day']} | ⏰ {lesson['start_time']}-{lesson['end_time']}\n"
+            preview_text += f"   📚 {lesson['subject']}\n"
 
-            create_schedule(
-                group_id=group_id,
-                user_id=user_id,
-                subject_id=subject_id,
-                weekday=lesson['day'],
-                start_time=lesson['start_time'],
-                end_time=lesson['end_time'],
-                week_type=lesson.get('week_type', 'both'),
-                classroom=lesson.get('classroom', "")
-            )
-            saved_count += 1
+            week_type_text = {
+                "both": "📆 Каждая неделя",
+                "even": "📆 Чётная неделя",
+                "odd": "📆 Нечётная неделя"
+            }.get(lesson.get('week_type', 'both'), lesson.get('week_type', 'both'))
+            preview_text += f"   {week_type_text}\n"
 
-        await message.answer(f"✅ Расписание сохранено!\n\n📊 Добавлено занятий: {saved_count}")
-        await state.clear()
+            if lesson.get('classroom'):
+                preview_text += f"   🏛 Аудитория: {lesson['classroom']}\n"
+
+            preview_text += "\n"
+
+        # Ограничиваем длину сообщения
+        if len(preview_text) > 3800:
+            preview_text = preview_text[:3800] + "\n\n... и ещё несколько занятий"
+
+        # Клавиатура для подтверждения
+        confirm_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Да, всё верно", callback_data="schedule_confirm_yes")],
+            [InlineKeyboardButton(text="❌ Нет, отменить", callback_data="schedule_confirm_no")],
+            [InlineKeyboardButton(text="📝 Ввести вручную", callback_data="schedule_confirm_manual")]
+        ])
+
+        await state.set_state(ScheduleConfirmStates.waiting_for_confirmation)
+        await message.answer(
+            preview_text,
+            reply_markup=confirm_keyboard,
+            parse_mode="Markdown"
+        )
 
     except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}")
-    finally:
+        await message.answer(f"❌ Ошибка при распознавании: {e}")
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
@@ -695,3 +710,91 @@ async def cancel_manual(message: Message, state: FSMContext):
 async def cancel_all(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("❌ Действие отменено.", reply_markup=ReplyKeyboardRemove())
+
+
+@router.callback_query(ScheduleConfirmStates.waiting_for_confirmation, F.data == "schedule_confirm_yes")
+async def confirm_schedule(callback: CallbackQuery, state: FSMContext):
+    """Сохраняем расписание после подтверждения"""
+    data = await state.get_data()
+    lessons = data.get('pending_lessons', [])
+    temp_photo_path = data.get('temp_photo_path')  # Добавлено
+
+    if not lessons:
+        await callback.message.edit_text("❌ Нет данных для сохранения.")
+        await state.clear()
+        await callback.answer()
+        return
+
+    await callback.message.edit_text("💾 Сохраняю расписание...")
+
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == str(callback.from_user.id)).first()
+
+    saved_count = 0
+    errors = []
+
+    for i, lesson in enumerate(lessons, 1):
+        try:
+            if user.role == "starosta" and user.group_id:
+                subject_id = get_or_create_subject(lesson['subject'], group_id=user.group_id)
+                group_id = user.group_id
+                user_id = None
+            else:
+                subject_id = get_or_create_subject(lesson['subject'], user_id=user.id)
+                group_id = None
+                user_id = user.id
+
+            if subject_id is None:
+                errors.append(f"Занятие {i}: не удалось создать предмет «{lesson['subject']}»")
+                continue
+
+            create_schedule(
+                group_id=group_id,
+                user_id=user_id,
+                subject_id=subject_id,
+                weekday=lesson['day'],
+                start_time=lesson['start_time'],
+                end_time=lesson['end_time'],
+                week_type=lesson.get('week_type', 'both'),
+                classroom=lesson.get('classroom', "")
+            )
+            saved_count += 1
+        except Exception as e:
+            errors.append(f"Занятие {i}: {str(e)}")
+
+    close_db(db)
+
+    # Удаляем временный файл
+    if temp_photo_path and os.path.exists(temp_photo_path):
+        os.remove(temp_photo_path)
+
+    result_text = f"✅ Расписание сохранено!\n\n📊 Добавлено занятий: {saved_count}/{len(lessons)}"
+
+    if errors:
+        result_text += f"\n\n⚠️ Ошибки:\n" + "\n".join(errors[:5])
+        if len(errors) > 5:
+            result_text += f"\n... и ещё {len(errors) - 5} ошибок"
+
+    await callback.message.edit_text(result_text)
+    await state.clear()
+    await callback.answer()
+
+
+@router.callback_query(ScheduleConfirmStates.waiting_for_confirmation, F.data == "schedule_confirm_no")
+async def cancel_schedule(callback: CallbackQuery, state: FSMContext):
+    """Отменяем сохранение"""
+    data = await state.get_data()
+    temp_photo_path = data.get('temp_photo_path')
+
+    if temp_photo_path and os.path.exists(temp_photo_path):
+        os.remove(temp_photo_path)
+
+    await callback.message.edit_text(
+        "❌ Импорт отменён.\n\n"
+        "Ты можешь:\n"
+        "• Загрузить исправленный файл\n"
+        "• Использовать /import_schedule для нового импорта\n"
+        "• Ввести расписание вручную"
+    )
+    await state.clear()
+    await callback.answer()
